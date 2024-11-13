@@ -2,11 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
-import { genMaze  } from './maze';
+import { genMaze, exitCoords  } from './maze';
 
 let gameScene = new THREE.Scene();
 let menuScene = new THREE.Scene();
 let currentScene = new THREE.Scene();
+let win = false;
 
 currentScene = gameScene;
 
@@ -25,6 +26,11 @@ controls.target.set(0, 0, 0);
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 camera.position.set(0, 25, 0)
+
+camera.updateWorldMatrix();
+let vector = camera.position.clone();
+vector = camera.getWorldPosition(new THREE.Vector3());
+console.log(vector);
 //camera.position.set(-1, 3, 30);
 
 const wall_texture = new THREE.TextureLoader().load('textures/wall_texture.jpg');
@@ -69,7 +75,7 @@ const hand_geometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
 const hand_material = new THREE.MeshStandardMaterial({ color: 0x804fff });
 const hand = new THREE.Mesh(hand_geometry, hand_material);
 hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
-gameScene.add(hand); // Fix to player
+camera.add(hand); // Fix to player
 gameScene.add(camera);
 
 
@@ -150,6 +156,8 @@ function createMenuText() {
     group.add(textMesh);
 }
 
+//if (vector.x === map[0])
+
 window.addEventListener('keydown', function(event) {
     const speed = 0.5;
     let newX = player.position.x;
@@ -191,6 +199,8 @@ window.addEventListener('keydown', function(event) {
             }
             break;
     }
+    vector = camera.getWorldPosition(new THREE.Vector3());
+    console.log(vector);
 
     // TBD : Fix collision check, prob push the player back the same units if collision detected
     const col = Math.round((newX + 30) / 2);
@@ -200,9 +210,20 @@ window.addEventListener('keydown', function(event) {
         player.position.set(newX, player.position.y, newZ);
     //}
 });
+
+function checkWin() {
+    const vector = camera.getWorldPosition(new THREE.Vector3());
+    console.log('Vector Position: ' + vector.x + ' ' + vector.z);
+    if (vector.x === exitCoords.x && vector.z === exitCoords.z) {
+        win = true;
+        currentScene = menuScene;
+        current_camera = menuCamera;
+    }
+}
+
 function animate() {
     requestAnimationFrame(animate);
-    
+    checkWin();
     // Move camera to follow the player's position
     updateCameraPosition();
     renderer.render(currentScene, current_camera);

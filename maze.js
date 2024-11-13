@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 
+export let exitCoords;
 //Recursive backtracking
 function carvePassages(x, z, grid) {
     const N = [-1, 0];
@@ -22,6 +23,11 @@ function carvePassages(x, z, grid) {
 
 export function genMaze(maze, scene) {
     maze[1][1] = 0;
+    //temp exit
+    maze[0][maze.length - 2] = 0;
+    exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
+    console.log(`Exit Position (World Coordinates): X=${exitCoords.x}, Z=${exitCoords.z}`);
+
     carvePassages(1, 1, maze);
     console.log(maze)
     for (let row = 0; row < maze.length; ++row) {
