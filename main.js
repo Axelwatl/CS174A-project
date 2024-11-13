@@ -14,7 +14,7 @@ currentScene = gameScene;
 let menuCameraTarget = new THREE.Vector3(0, 150, 0);
 let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
 let menuCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1500);
-menuCamera.position.set(0, 400, 700);
+menuCamera.position.set(0, 100, 700);
 menuCamera.lookAt(menuCameraTarget);
 
 const orbit_camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -146,17 +146,34 @@ function createMenuText() {
         bevelThickness: 2,
         bevelSize: 1,
         bevelEnabled: true
-    })
+    });
 
     textGeo.computeBoundingBox();
     const centerOffset = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
 
     textMesh = new THREE.Mesh(textGeo, materials);
-    textMesh.position.set(centerOffset, 100, 0);
+    textMesh.position.set(centerOffset, 70, 0);
+
+    textGeo2 = new TextGeometry('WIN', {
+        font: font,
+        size: 50,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+
+    textGeo2.computeBoundingBox();
+    const centerOffset2 = -0.5 * (textGeo2.boundingBox.max.x - textGeo2.boundingBox.min.x);
+
+    textMesh2 = new THREE.Mesh(textGeo2, materials);
+    textMesh2.position.set(centerOffset2, 300, 0);
+
     group.add(textMesh);
+    group.add(textMesh2);
 }
 
-//if (vector.x === map[0])
 
 window.addEventListener('keydown', function(event) {
     const speed = 0.5;
@@ -213,11 +230,11 @@ window.addEventListener('keydown', function(event) {
 
 function checkWin() {
     const vector = camera.getWorldPosition(new THREE.Vector3());
-    console.log('Vector Position: ' + vector.x + ' ' + vector.z);
     if (vector.x === exitCoords.x && vector.z === exitCoords.z) {
         win = true;
         currentScene = menuScene;
         current_camera = menuCamera;
+        menuCamera.position.set(0, 330, 700);
     }
 }
 
