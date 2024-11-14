@@ -21,12 +21,17 @@ function carvePassages(x, z, grid) {
     });
 }
 
+
+function carveCorners(maze) {
+    let topLeft, bottomLeft, topRight, bottomRight;
+    let 
+}
+
 export function genMaze(maze, scene) {
     maze[1][1] = 0;
     //temp exit
     maze[0][maze.length - 2] = 0;
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
-    console.log(`Exit Position (World Coordinates): X=${exitCoords.x}, Z=${exitCoords.z}`);
 
     carvePassages(1, 1, maze);
     console.log(maze)
@@ -35,14 +40,19 @@ export function genMaze(maze, scene) {
             if (maze[row][col] === 1) {
                 let x = col * 2 - maze.length + 1;
                 let z = row * 2 - maze.length + 1;
-                let wall_geometry = new THREE.BoxGeometry(2, 4, 2);
+                let wall_geometry = new THREE.BoxGeometry(2, 5, 2);
                 let wall_material = new THREE.MeshStandardMaterial({
+                    //change 
                     map: new THREE.TextureLoader().load('textures/wall_texture.jpg')
                 });
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
+                let rand_row = Math.random() * ((maze.length - 2) - (1)) + 1;
+                let rand_col = Math.random() * ((maze[row].length - 2) - (1)) + 1;
+                maze[Math.floor(rand_row)][Math.floor(rand_col)] = 0;
                 wall.position.set(x, 2, z);
                 scene.add(wall);
             }
         }
     }
+    carveCorners(maze);
 }

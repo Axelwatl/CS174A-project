@@ -1,138 +1,131 @@
 import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
-import { FontLoader } from 'three/examples/jsm/Addons.js';
+import { FirstPersonControls, FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
 import { genMaze, exitCoords  } from './maze';
+import { ShadowMapViewer } from 'three/examples/jsm/Addons.js';
 
-let gameScene = new THREE.Scene();
-let menuScene = new THREE.Scene();
-let currentScene = new THREE.Scene();
-let win = false;
+let camera, menuCamera, currentCamera, menuCameraTarget, cameraPosition, controls, renderer;
 
-currentScene = gameScene;
+//temp
+let orbitCamera;
 
-let menuCameraTarget = new THREE.Vector3(0, 150, 0);
-let camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
-let menuCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1500);
-menuCamera.position.set(0, 100, 700);
-menuCamera.lookAt(menuCameraTarget);
-
-const orbit_camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-let current_camera = camera;
-
-const renderer = new THREE.WebGLRenderer();
-const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0, 0);
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
-camera.position.set(0, 25, 0)
-
-camera.updateWorldMatrix();
-let vector = camera.position.clone();
-vector = camera.getWorldPosition(new THREE.Vector3());
-console.log(vector);
-//camera.position.set(-1, 3, 30);
-
-const wall_texture = new THREE.TextureLoader().load('textures/wall_texture.jpg');
-const floor_texture = new THREE.TextureLoader().load('textures/floor.jpeg');
-let floor_material = new THREE.MeshStandardMaterial({ map: floor_texture });
-let floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floor_material);
-floor.rotateX(-Math.PI / 2);
-
-gameScene.add(floor);
-
-const createAxisLine = (color, start, end) => {
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const material = new THREE.LineBasicMaterial({ color: color });
-    return new THREE.Line(geometry, material);
-};
-const xAxis = createAxisLine(0xff0000, new THREE.Vector3(0, 0, 0), new THREE.Vector3(3, 0, 0)); // Red
-const yAxis = createAxisLine(0x00ff00, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 3, 0)); // Green
-const zAxis = createAxisLine(0x0000ff, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 3)); // Blue
-gameScene.add(xAxis);
-gameScene.add(yAxis);
-gameScene.add(zAxis);
-
-const pointLight = new THREE.PointLight(0xffffff, 100, 100);
-pointLight.position.set(5, 5, 5); // Position the light
-gameScene.add(pointLight);
-
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-directionalLight.position.set(0.5, .0, 1.0).normalize();
-gameScene.add(directionalLight);
-
-const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
-gameScene.add(ambientLight);
-
-// Make player
-const player_geometry = new THREE.SphereGeometry(0.5, 14, 14);
-const player_material = new THREE.MeshStandardMaterial({ color: 0x000fff });
-const player = new THREE.Mesh(player_geometry, player_material);
-gameScene.add(player);
-
-// Temp. use box for hand (MC)
-const hand_geometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
-const hand_material = new THREE.MeshStandardMaterial({ color: 0x804fff });
-const hand = new THREE.Mesh(hand_geometry, hand_material);
-hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
-camera.add(hand); // Fix to player
-gameScene.add(camera);
-
-
-const phong_material = new THREE.MeshPhongMaterial({
-    color: 0x00ff00, // Green color
-    shininess: 100   // Shininess of the material
-});
-
-const grid = new THREE.GridHelper(60, 30);
-gameScene.add(grid);
-
-let mapSize = Math.floor(Math.random() * (34 - 15 + 1) + 15);
-if (mapSize % 2 == 0) {
-    if (mapSize == 34) {
-        mapSize -= 1;
-    } else {
-        mapSize += 1;
-    }
-}
-
-const map = Array.from({ length: mapSize }, () => new Array(mapSize).fill(1))
-genMaze(map, gameScene);
-
-
-function updateCameraPosition() {
-    camera.position.set(player.position.x, player.position.y + 1.5, player.position.z); 
-    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z + 1);
-}
-
+let gameScene, menuScene, currentScene, player, hand, map;
 let group, textMesh, textMesh2, textMesh3, textGeo, textGeo2, textGeo3, font;
-
-const menuDirLight = new THREE.DirectionalLight(0xffffff, 1);
-menuDirLight.position.set(0,0,1).normalize();
-menuScene.add(menuDirLight);
-
-const menuPtLight = new THREE.PointLight(0xffffff, 1, 0, 0);
-menuPtLight.color.setHSL(Math.random(), 1, 0.5);
-menuPtLight.position.set(0, 100, 90);
-menuScene.add(menuPtLight);
-
-let materials = [
+let materialsTextGeo = [
     new THREE.MeshPhongMaterial( { color: 0xffffff, flatShading: true } ),
     new THREE.MeshPhongMaterial({ color: 0xffffff })
 ];
 
-group = new THREE.Group();
-group.position.y = 50;
-menuScene.add(group);
+let win = false;
 
-loadFont();
+init();
 
-function loadFont() {
+function init() {
+    camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 25, 0);
+
+    menuCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1500);
+    menuCamera.position.set(0, 100, 700);
+
+    renderer = new THREE.WebGLRenderer({antialias: true});
+    renderer.setPixelRatio( window.devicePixelRatio );
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    //renderer.setAnimationLoop( animate );
+    document.body.appendChild(renderer.domElement);
+
+    //temp
+    orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.set(0,0,0);
+
+    currentCamera = camera;
+
+    gameScene = new THREE.Scene();
+    gameScene.background = new THREE.Color(0x000000);
+    gameScene.fog = new THREE.Fog(0xffffff, 200, 1000);
+
+    menuScene = new THREE.Scene();
+    menuScene.background = new THREE.Color(0x000000);
+    menuScene.fog = new THREE.Fog(0xffffff, 200, 1000);
+
+    //lighting
+
+    const pointLight = new THREE.PointLight(0xffffff, 100, 100);
+    pointLight.position.set(5, 15, 5); // Position the light
+    gameScene.add(pointLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(0.5, .0, 1.0).normalize();
+    gameScene.add(directionalLight);
+
+    const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
+    gameScene.add(ambientLight);
+
+    currentScene = gameScene;
+
+    makeGameScene();
+    makeText();
+
+}
+
+function makeGameScene() {
+    let mapSize = Math.floor(Math.random() * (34 - 15 + 1) + 15);
+    if (mapSize % 2 == 0) {
+        if (mapSize == 34) {
+            mapSize -= 1;
+        } else {
+            mapSize += 1;
+        }
+    }   
+    map = Array.from({ length: mapSize }, () => new Array(mapSize).fill(1))
+    genMaze(map, gameScene);
+
+    //Player
+    const playerGeometry = new THREE.SphereGeometry(0.5, 14, 14);
+    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x000fff });
+    player = new THREE.Mesh(playerGeometry, playerMaterial);
+    gameScene.add(player);
+
+    //Player hand
+    const handGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
+    const handMaterial = new THREE.MeshStandardMaterial({ color: 0x804fff });
+    hand = new THREE.Mesh(handGeometry, handMaterial);
+    hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
+    camera.add(hand); // Fix to player
+    gameScene.add(camera);
+
+    const floorGeometry = new THREE.PlaneGeometry(map.length * 2, map.length * 2);
+    const floorMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+
+    floor.position.set(0, 0, 0);
+    floor.rotation.x = -Math.PI / 2;
+    
+    gameScene.add(floor);
+}
+
+function makeText() {
+    //lighting
+    const menuDirLight = new THREE.DirectionalLight(0xffffff, 1);
+    menuDirLight.position.set(0,0,1).normalize();
+    menuScene.add(menuDirLight);
+
+    const menuPtLight = new THREE.PointLight(0xffffff, 1, 0, 0);
+    menuPtLight.color.setHSL(Math.random(), 1, 0.5);
+    menuPtLight.position.set(0, 100, 90);
+    menuScene.add(menuPtLight);
+
+    group = new THREE.Group();
+    group.position.y = 50;
+    menuScene.add(group);
+
     const loader = new FontLoader();
     loader.load('fonts/Pixelify.json', (response) => {
         font = response;
         createMenuText();
     });
+    
 }
 
 function createMenuText() {
@@ -151,8 +144,8 @@ function createMenuText() {
     textGeo.computeBoundingBox();
     const centerOffset = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
 
-    textMesh = new THREE.Mesh(textGeo, materials);
-    textMesh.position.set(centerOffset, 70, 0);
+    textMesh = new THREE.Mesh(textGeo, materialsTextGeo);
+    textMesh.position.set(centerOffset, 60, 0);
 
     textGeo2 = new TextGeometry('WIN', {
         font: font,
@@ -167,13 +160,17 @@ function createMenuText() {
     textGeo2.computeBoundingBox();
     const centerOffset2 = -0.5 * (textGeo2.boundingBox.max.x - textGeo2.boundingBox.min.x);
 
-    textMesh2 = new THREE.Mesh(textGeo2, materials);
-    textMesh2.position.set(centerOffset2, 300, 0);
+    textMesh2 = new THREE.Mesh(textGeo2, materialsTextGeo);
+    textMesh2.position.set(centerOffset2, 1060, 0);
 
     group.add(textMesh);
     group.add(textMesh2);
 }
 
+function updateCameraPosition() {
+    camera.position.set(player.position.x, player.position.y + 1.5, player.position.z); 
+    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z + 1);
+}
 
 window.addEventListener('keydown', function(event) {
     const speed = 0.5;
@@ -202,22 +199,23 @@ window.addEventListener('keydown', function(event) {
             newX -= Math.cos(camera.rotation.y) * speed;
             break;
         case 'k':
-            current_camera = orbit_camera;
-            current_camera.position.set(0, 50, 0);
-            current_camera.lookAt(0, 0, 0);
-            controls.object = current_camera;
+            currentCamera = orbitCamera;
+            currentCamera.position.set(0, 50, 0);
+            currentCamera.lookAt(0, 0, 0);
+            controls.object = currentCamera;
             break;
         case 'Escape':
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
             if (currentScene === gameScene) {
-                current_camera = camera;
+                currentCamera = camera;
             } else {
-                current_camera = menuCamera;
+                menuCamera.position.set(0, 80, 700);
+                currentCamera = menuCamera;
             }
             break;
     }
-    vector = camera.getWorldPosition(new THREE.Vector3());
-    console.log(vector);
+    cameraPosition = camera.getWorldPosition(new THREE.Vector3());
+    console.log(cameraPosition);
 
     // TBD : Fix collision check, prob push the player back the same units if collision detected
     const col = Math.round((newX + 30) / 2);
@@ -233,16 +231,17 @@ function checkWin() {
     if (vector.x === exitCoords.x && vector.z === exitCoords.z) {
         win = true;
         currentScene = menuScene;
-        current_camera = menuCamera;
-        menuCamera.position.set(0, 330, 700);
+        currentCamera = menuCamera;
+        menuCamera.position.set(0, 1060, 700);
     }
 }
 
 function animate() {
     requestAnimationFrame(animate);
+    controls.update();
     checkWin();
     // Move camera to follow the player's position
     updateCameraPosition();
-    renderer.render(currentScene, current_camera);
+    renderer.render(currentScene, currentCamera);
 }
 animate();
