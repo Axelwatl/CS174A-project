@@ -5,7 +5,7 @@ import { TextGeometry } from 'three/examples/jsm/Addons.js';
 import { genMaze, exitCoords  } from './maze';
 import { ShadowMapViewer } from 'three/examples/jsm/Addons.js';
 
-let camera, menuCamera, currentCamera, menuCameraTarget, cameraPosition, controls, renderer;
+let camera, menuCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
 
 //temp
 let orbitCamera;
@@ -18,7 +18,7 @@ let materialsTextGeo = [
 ];
 
 let win = false;
-
+let vector;
 init();
 
 function init() {
@@ -27,6 +27,7 @@ function init() {
 
     menuCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 1500);
     menuCamera.position.set(0, 100, 700);
+    let vector = camera.position.clone();
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio( window.devicePixelRatio );
@@ -37,9 +38,11 @@ function init() {
     //temp
     orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     controls = new OrbitControls(camera, renderer.domElement);
+    //controls.enabled = false;
     controls.target.set(0,0,0);
+    //controls.enableKeys = false; 
 
-    currentCamera = camera;
+    current_camera = camera;
 
     gameScene = new THREE.Scene();
     gameScene.background = new THREE.Color(0x000000);
@@ -49,7 +52,7 @@ function init() {
     menuScene.background = new THREE.Color(0x000000);
     menuScene.fog = new THREE.Fog(0xffffff, 200, 1000);
 
-    //lighting
+    //lighting (Light control also done in makeText for text)
 
     const pointLight = new THREE.PointLight(0xffffff, 100, 100);
     pointLight.position.set(5, 15, 5); // Position the light
@@ -60,7 +63,18 @@ function init() {
     gameScene.add(directionalLight);
 
     const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
+    ambientLight.intensity = 0.01;
     gameScene.add(ambientLight);
+
+    // Make the room dark
+    ambientLight.intensity = 0.01;
+
+    // Dim directional light to cast minimal ambient lighting
+    directionalLight.intensity = 0.02;
+
+    // Reduce point light's intensity
+    pointLight.intensity = 0.3;
+    //torchLight.intensity = 1; Moved to makeGameScene
 
     currentScene = gameScene;
 
@@ -68,6 +82,7 @@ function init() {
     makeText();
 
 }
+
 
 function makeGameScene() {
     let mapSize = Math.floor(Math.random() * (34 - 15 + 1) + 15);
@@ -95,8 +110,18 @@ function makeGameScene() {
     camera.add(hand); // Fix to player
     gameScene.add(camera);
 
+    // Create torch
+    const torchLight = new THREE.SpotLight(0xffffff, 1, 10, Math.PI / 4, 0.1, 1);
+    torchLight.position.set(0, 0, 0.5); // Position it slightly in front of the hand
+    torchLight.target.position.set(0, 0, -1); // Point the light forward
+    hand.add(torchLight);
+    hand.add(torchLight.target); // Attach the target to the hand
+    torchLight.intensity = 1;
+
+    
+
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2, map.length * 2);
-    const floorMaterial = new THREE.MeshPhongMaterial({color: 0xffffff});
+    const floorMaterial = new THREE.MeshPhongMaterial({color: 0x555555});
     const floor = new THREE.Mesh(floorGeometry, floorMaterial)
 
     floor.position.set(0, 0, 0);
@@ -104,6 +129,7 @@ function makeGameScene() {
     
     gameScene.add(floor);
 }
+
 
 function makeText() {
     //lighting
@@ -127,6 +153,7 @@ function makeText() {
     });
     
 }
+
 
 function createMenuText() {
     if (!font) return;
@@ -168,54 +195,58 @@ function createMenuText() {
 }
 
 function updateCameraPosition() {
-    camera.position.set(player.position.x, player.position.y + 1.5, player.position.z); 
-    camera.lookAt(player.position.x, player.position.y + 1.5, player.position.z + 1);
+    // Camera offset from player; can adjust if necessary
+    const cameraOffset = new THREE.Vector3(0, 1.5, 0);
+
+    // Apply the player's rotation
+    cameraOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
+    camera.position.copy(player.position.clone().add(cameraOffset));
+    const lookAtOffset = new THREE.Vector3(0, 1.5, 1); //Where do we look from
+    lookAtOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
+    camera.lookAt(player.position.clone().add(lookAtOffset));//Look from offset
 }
 
 window.addEventListener('keydown', function(event) {
+    console.log('Key pressed:', event.key); // For debugging
     const speed = 0.5;
     let newX = player.position.x;
     let newZ = player.position.z;
 
     switch (event.key) {
-        case 'w': //Up
-        case 'ArrowUp' :
-            newZ += Math.cos(camera.rotation.y) * speed;
-            newX += Math.sin(camera.rotation.y) * speed;
+        case 'w': // Forward
+        case 'ArrowUp':
+            newX += Math.sin(player.rotation.y) * speed;
+            newZ += Math.cos(player.rotation.y) * speed;
             break;
-        case 's': //Down
-        case 'ArrowDown' :
-            newZ -= Math.cos(camera.rotation.y) * speed;
-            newX -= Math.sin(camera.rotation.y) * speed;
+        case 's': // Backward
+        case 'ArrowDown':
+            newX -= Math.sin(player.rotation.y) * speed;
+            newZ -= Math.cos(player.rotation.y) * speed;
             break;
-        case 'a': //Left
-        case 'ArrowLeft' :
-            newZ -= Math.sin(camera.rotation.y) * speed;
-            newX += Math.cos(camera.rotation.y) * speed;
+        case 'a': // Left
+        case 'ArrowLeft':
+            newX += Math.cos(player.rotation.y) * speed;
+            newZ -= Math.sin(player.rotation.y) * speed;
             break;
-        case 'd': //Right
-        case 'ArrowRight' :
-            newZ += Math.sin(camera.rotation.y) * speed;
-            newX -= Math.cos(camera.rotation.y) * speed;
+        case 'd': // Right
+        case 'ArrowRight':
+            newX -= Math.cos(player.rotation.y) * speed;
+            newZ += Math.sin(player.rotation.y) * speed;
             break;
         case 'k':
-            currentCamera = orbitCamera;
-            currentCamera.position.set(0, 50, 0);
-            currentCamera.lookAt(0, 0, 0);
-            controls.object = currentCamera;
+            current_camera = orbit_camera;
+            current_camera.position.set(0, 50, 0);
+            current_camera.lookAt(0, 0, 0);
+            controls.object = current_camera;
             break;
         case 'Escape':
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
-            if (currentScene === gameScene) {
-                currentCamera = camera;
-            } else {
-                menuCamera.position.set(0, 80, 700);
-                currentCamera = menuCamera;
-            }
+            current_camera = (currentScene === gameScene) ? camera : menuCamera;
             break;
     }
-    cameraPosition = camera.getWorldPosition(new THREE.Vector3());
-    console.log(cameraPosition);
+
+    vector = player.getWorldPosition(new THREE.Vector3());
+    console.log(vector);
 
     // TBD : Fix collision check, prob push the player back the same units if collision detected
     const col = Math.round((newX + 30) / 2);
@@ -226,22 +257,54 @@ window.addEventListener('keydown', function(event) {
     //}
 });
 
+let isLeftClickHeld = false;
+let previousMouseX = null;
+
+// Deact Orbitcontrols when left clicked
+window.addEventListener('mousedown', (event) => {
+    if (event.button === 0) {
+        isLeftClickHeld = true;
+        previousMouseX = event.clientX;
+        controls.enabled = false; // Disable
+    }
+});
+
+window.addEventListener('mouseup', (event) => {
+    if (event.button === 0) {
+        isLeftClickHeld = false;
+        previousMouseX = null;
+        controls.enabled = true; // Re-enable
+    }
+});
+
+window.addEventListener('mousemove', (event) => {
+    if (isLeftClickHeld && previousMouseX !== null) {
+        const deltaX = event.clientX - previousMouseX;
+        const rotationSpeed = 0.005;
+
+        // Rotate the player around its y-axis
+        player.rotation.y -= deltaX * rotationSpeed;
+
+        previousMouseX = event.clientX;
+    }
+});
+
 function checkWin() {
     const vector = camera.getWorldPosition(new THREE.Vector3());
     if (vector.x === exitCoords.x && vector.z === exitCoords.z) {
         win = true;
         currentScene = menuScene;
-        currentCamera = menuCamera;
+        current_camera = menuCamera;
         menuCamera.position.set(0, 1060, 700);
     }
 }
 
 function animate() {
     requestAnimationFrame(animate);
-    controls.update();
+    //controls.update();
     checkWin();
     // Move camera to follow the player's position
     updateCameraPosition();
-    renderer.render(currentScene, currentCamera);
+    renderer.render(currentScene, current_camera);
 }
 animate();
