@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 
 export let exitCoords;
+export let losingCoordsTEMP;
+
 //Recursive backtracking
 function carvePassages(x, z, grid) {
     const N = [-1, 0];
@@ -21,19 +23,34 @@ function carvePassages(x, z, grid) {
     });
 }
 
-
+//Temp
+/*
 function carveCorners(maze) {
-    let topLeft, bottomLeft, topRight, bottomRight;
-    let 
+    let chunk = maze.length / 3;
+    for (let i = 1; i < chunk; ++i) {
+        for (let j = 1; j < chunk; ++j) {  
+            maze[i][j] = 0;
+        }
+    }
+    for (let i = 1; i < chunk; ++i) {
+        for (let j = maze[i].length - chunk; j < maze[i].length - 1; ++j) {  
+            maze[i][j] = 0;
+        }
+    }
 }
-
+*/
 export function genMaze(maze, scene) {
     maze[1][1] = 0;
-    //temp exit
+    //Temp exit
     maze[0][maze.length - 2] = 0;
+    //Temp exitcoords
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
-
+    //temp 
+    losingCoordsTEMP = new THREE.Vector3(2, 1.5, 0);
+    
     carvePassages(1, 1, maze);
+    //carveCorners(maze);
+
     console.log(maze)
     for (let row = 0; row < maze.length; ++row) {
         for (let col = 0; col < maze[row].length; ++col) {
@@ -48,11 +65,9 @@ export function genMaze(maze, scene) {
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
                 let rand_row = Math.random() * ((maze.length - 2) - (1)) + 1;
                 let rand_col = Math.random() * ((maze[row].length - 2) - (1)) + 1;
-                maze[Math.floor(rand_row)][Math.floor(rand_col)] = 0;
                 wall.position.set(x, 2, z);
                 scene.add(wall);
             }
         }
     }
-    carveCorners(maze);
 }
