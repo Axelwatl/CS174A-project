@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
-import { genMaze, exitCoords, losingCoordsTEMP  } from './maze';
+import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition  } from './maze';
 
 
 let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
@@ -93,13 +93,16 @@ function makeGameScene() {
         }
     }  
     //Temp small map for testing
-    map = Array.from({ length: 5 }, () => new Array(5).fill(1))
+    map = Array.from({ length: mapSize }, () => new Array(mapSize).fill(1))
     genMaze(map, gameScene);
 
     //Player
     const playerGeometry = new THREE.SphereGeometry(0.5, 14, 14);
     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x000fff });
     player = new THREE.Mesh(playerGeometry, playerMaterial);
+    let randomSpawnPt = setSpawn();
+    console.log(randomSpawnPt.x + ' ' + randomSpawnPt.z);
+    player.position.set(randomSpawnPt.x, 0, randomSpawnPt.z);
     gameScene.add(player);
 
     //Player hand
@@ -255,12 +258,19 @@ function createMenuText() {
     group.add(textMesh);
     group.add(textMesh2);
     group.add(textMesh3);
-    group.add(textMesh4);
+    //group.add(textMesh4);
     group.add(textMesh5);
     group.add(textMesh6);
     group.add(textMesh7);
 }
 
+
+function setSpawn() {
+    validSpawnPosition.sort(() => Math.random() - 0.5);
+    let x = validSpawnPosition.at(0)[0];
+    let z = validSpawnPosition.at(0)[1];
+    return { x: x, y: 25, z: z };
+}
 
 function updateCameraPosition() {
     // Camera offset from player; can adjust if necessary
@@ -362,8 +372,7 @@ console.log(exitCoords.x + ',' + exitCoords.z);
 function checkWin() {
     const vector = camera.getWorldPosition(new THREE.Vector3());
     let distanceFromExit = Math.sqrt(Math.pow(exitCoords.x - vector.x, 2) + Math.pow(exitCoords.z - vector.z, 2));
-    if (distanceFromExit < 0.3) {
-        win = true;
+    if (distanceFromExit < 0.7) {
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, 385, 400);
@@ -371,7 +380,6 @@ function checkWin() {
     //Temporary; checking for loss menu
     //Losing condition: Entity coords === player coords
     if (vector.x === losingCoordsTEMP.x && vector.z === losingCoordsTEMP.z) {
-        win = false;
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, -55, 400);

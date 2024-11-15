@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export let exitCoords;
 export let losingCoordsTEMP;
-
+export let validSpawnPosition = [];
 //Recursive backtracking
 function carvePassages(x, z, grid) {
     const N = [-1, 0];
@@ -23,8 +23,6 @@ function carvePassages(x, z, grid) {
     });
 }
 
-//Temp
-/*
 function carveCorners(maze) {
     let chunk = maze.length / 3;
     for (let i = 1; i < chunk; ++i) {
@@ -38,8 +36,9 @@ function carveCorners(maze) {
         }
     }
 }
-*/
+
 export function genMaze(maze, scene) {
+    let texture = new THREE.TextureLoader().load('textures/wall_texture.jpg');
     maze[1][1] = 0;
     //Temp exit
     maze[0][maze.length - 2] = 0;
@@ -54,19 +53,22 @@ export function genMaze(maze, scene) {
     console.log(maze)
     for (let row = 0; row < maze.length; ++row) {
         for (let col = 0; col < maze[row].length; ++col) {
-            if (maze[row][col] === 1) {
-                let x = col * 2 - maze.length + 1;
-                let z = row * 2 - maze.length + 1;
+            let x = col * 2 - maze.length + 1;
+            let z = row * 2 - maze.length + 1;
+            if (maze[row][col] === 1) {            
                 let wall_geometry = new THREE.BoxGeometry(2, 5, 2);
                 let wall_material = new THREE.MeshStandardMaterial({
                     //change 
-                    map: new THREE.TextureLoader().load('textures/wall_texture.jpg')
+                    map: texture
                 });
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
-                let rand_row = Math.random() * ((maze.length - 2) - (1)) + 1;
-                let rand_col = Math.random() * ((maze[row].length - 2) - (1)) + 1;
                 wall.position.set(x, 2, z);
                 scene.add(wall);
+            } else if (row === 0 && col === maze.length - 2) {
+                //then exit position
+                continue;
+            } else {
+                validSpawnPosition.push([x, z]);
             }
         }
     }
