@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
-import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition  } from './maze';
+import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes } from './maze.js';
 
 
 let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
@@ -22,8 +22,8 @@ let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, text
 let menuItems = [];
 
 //mapsize
-const MAX_MAP_SIZE = 9;
-const MIN_MAP_SIZE = 5;
+const MAX_MAP_SIZE = 30;
+const MIN_MAP_SIZE = 20;
 
 let win = false;
 let vector;
@@ -83,7 +83,7 @@ function init() {
     //torchLight.intensity = 1; Moved to makeGameScene
     currentScene = gameScene;
 
-    spawnPoint = setSpawn();
+    //spawnPoint = setSpawn();
     makeGameScene();
     makeText();
 
@@ -92,6 +92,7 @@ function init() {
 function makeGameScene() {
     loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
     //Player
+    spawnPoint = setSpawn();
     const playerGeometry = new THREE.SphereGeometry(0.5, 14, 14);
     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x000fff });
     player = new THREE.Mesh(playerGeometry, playerMaterial);
@@ -281,9 +282,9 @@ function loadMap(max, min) {
 }
 
 function setSpawn() {
-    if (!player) {
-        return { x: 0, y: 0, z: 0 }; 
-    }
+    //if (!player) {
+    //    return { x: 0, y: 0, z: 0 }; 
+    //} Removed this as it was causing the player to be stuck when the game started
     validSpawnPosition.sort(() => Math.random() - 0.5);
     let x = validSpawnPosition.at(0)[0];
     let z = validSpawnPosition.at(0)[1];
@@ -301,32 +302,50 @@ function updateCameraPosition() {
     camera.lookAt(player.position.clone().add(lookAtOffset));//Look from offset
 }
 
+function isPositionValid(x, z) {
+    const playerRadius = 0.20; // Increase/Decrease this value to fix too many/too few collisions
+    const playerPosition = new THREE.Vector3(x, player.position.y, z);
+
+    const playerSphere = new THREE.Sphere(playerPosition, playerRadius);
+
+    for (let i = 0; i < wallBoundingBoxes.length; i++) {
+        const wallBox = wallBoundingBoxes[i];
+        if (wallBox.intersectsSphere(playerSphere)) {//Use this built in func. to simplify check
+            // Collision detected
+            return false;
+        }
+    }
+    return true;
+}
+
+
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
     const speed = 0.5;
-    let newX = player.position.x;
-    let newZ = player.position.z;
+    //Compute the delta of players distance traversed 
+    let deltaX = 0;
+    let deltaZ = 0;
 
     switch (event.key) {
-        case 'w': //Forward
+        case 'w': // Forward
         case 'ArrowUp':
-            newX += Math.sin(player.rotation.y) * speed;
-            newZ += Math.cos(player.rotation.y) * speed;
+            deltaX += Math.sin(player.rotation.y) * speed;
+            deltaZ += Math.cos(player.rotation.y) * speed;
             break;
-        case 's': //Down
-        case 'ArrowDown' :
-            newX -= Math.sin(player.rotation.y) * speed;
-            newZ -= Math.cos(player.rotation.y) * speed;
+        case 's': // Backward
+        case 'ArrowDown':
+            deltaX -= Math.sin(player.rotation.y) * speed;
+            deltaZ -= Math.cos(player.rotation.y) * speed;
             break;
-        case 'a': //Left
-        case 'ArrowLeft' :
-            newX += Math.cos(player.rotation.y) * speed;
-            newZ -= Math.sin(player.rotation.y) * speed;
+        case 'a': // Left
+        case 'ArrowLeft':
+            deltaX += Math.cos(player.rotation.y) * speed;
+            deltaZ -= Math.sin(player.rotation.y) * speed;
             break;
-        case 'd': //Right
-        case 'ArrowRight' :
-            newX -= Math.cos(player.rotation.y) * speed;
-            newZ += Math.sin(player.rotation.y) * speed;
+        case 'd': // Right
+        case 'ArrowRight':
+            deltaX -= Math.cos(player.rotation.y) * speed;
+            deltaZ += Math.sin(player.rotation.y) * speed;
             break;
         case 'k':
             current_camera = orbitCamera;
@@ -344,18 +363,35 @@ window.addEventListener('keydown', function(event) {
             }
             break;
     }
-    vector = player.getWorldPosition(new THREE.Vector3());
-    console.log(vector.x + ' ' + vector.z);
 
-    // TBD : Fix collision check, prob push the player back the same units if collision detected
-    const col = Math.round((newX + 30) / 2);
-    const row = Math.round((newZ + 30) / 2);
-    //if (map_30[row] && map_30[row][col] == 0) 
-    //{
-        player.position.set(newX, player.position.y, newZ);
-    //}
+   // Movement vector
+   let movementVector = new THREE.Vector3(deltaX, 0, deltaZ);
+
+   // Break your movement into 1000 steps and check if a collision occured; needed to stop the player if moving too fast
+   let steps = 1000;
+   let stepVector = movementVector.clone().divideScalar(steps);
+
+   // Move incrementally
+   for (let i = 0; i < steps; i++) {
+       let newX = player.position.x + stepVector.x;
+       let newZ = player.position.z + stepVector.z;
+
+       if (isPositionValid(newX, newZ)) {
+           player.position.x = newX;
+           player.position.z = newZ;
+       } else {
+           // Collision detected, stop movement
+           break;
+       }
+   }
+
+
+    // Update camera and other necessary components
+    updateCameraPosition();
 });
 
+
+//Handle rotation with left click
 let isLeftClickHeld = false;
 let previousMouseX = null;
 
@@ -378,7 +414,7 @@ window.addEventListener('mousemove', (event) => {
     if (isLeftClickHeld && previousMouseX !== null) {
         const deltaX = event.clientX - previousMouseX;
         const rotationSpeed = 0.005;
-        // Rotate the player around its y-axis
+        // Rotate the player around its y-axis (YAW Rotation; )
         player.rotation.y -= deltaX * rotationSpeed;
         previousMouseX = event.clientX;
     }
@@ -438,6 +474,7 @@ function checkWin() {
     //need to track position of entity
     //Temporary; checking for loss menu
     //Losing condition: Entity coords === player coords
+    //Can use .intersectsSphere here for ease
     let distanceFromEntity = Math.sqrt(Math.pow(losingCoordsTEMP.x - losingCoordsTEMP.z, 2) + Math.pow(exitCoords.z - vector.z, 2));
     if (distanceFromEntity < 0.3) {
         currentScene = menuScene;

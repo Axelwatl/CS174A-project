@@ -3,7 +3,10 @@ import * as THREE from 'three';
 export let exitCoords;
 export let losingCoordsTEMP;
 export let validSpawnPosition = [];
-//Recursive backtracking
+export let wallBoundingBoxes = []; // Store wall bounding boxes
+export let collisionScale = 0.95; // From 0 -> 1
+
+// Recursive backtracking algorithm
 function carvePassages(x, z, grid) {
     const N = [-1, 0];
     const S = [1, 0];
@@ -23,48 +26,62 @@ function carvePassages(x, z, grid) {
     });
 }
 
-function carveCorners(maze) {
-    let chunk = maze.length / 3;
-    for (let i = 1; i < chunk; ++i) {
-        for (let j = 1; j < chunk; ++j) {  
-            maze[i][j] = 0;
-        }
-    }
-    for (let i = 1; i < chunk; ++i) {
-        for (let j = maze[i].length - chunk; j < maze[i].length - 1; ++j) {  
-            maze[i][j] = 0;
-        }
-    }
-}
-
 export function genMaze(maze, scene) {
     let texture = new THREE.TextureLoader().load('textures/wall_texture.jpg');
     maze[1][1] = 0;
-    //Temp exit
+    // Temporary exit
     maze[0][maze.length - 2] = 0;
-    //Temp exitcoords
+    // Exit coordinates
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
-    //temp 
+    // Temporary losing coordinates
     losingCoordsTEMP = new THREE.Vector3((maze.length - 5) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
-    
-    carvePassages(1, 1, maze);
-    //carveCorners(maze);
 
-    console.log(maze)
+    carvePassages(1, 1, maze);
+    //wallBoundingBoxes => Store the coordinates of the 4 corners of every wall in the maze. Use this for collision detection
+    wallBoundingBoxes = []; // Reset wall bounding boxes
+    validSpawnPosition = []; // Reset valid spawn positions
+
+    //Used with wall_geometry to make defining the bounding box easier
+    const wallWidth = 2;
+    const wallDepth = 2;
+    const wallHeight = 5;//wallHeight could be altered
+
     for (let row = 0; row < maze.length; ++row) {
         for (let col = 0; col < maze[row].length; ++col) {
             let x = col * 2 - maze.length + 1;
             let z = row * 2 - maze.length + 1;
-            if (maze[row][col] === 1) {            
-                let wall_geometry = new THREE.BoxGeometry(2, 5, 2);
+            if (maze[row][col] === 1) {
+                // Create wall
+                let wall_geometry = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
                 let wall_material = new THREE.MeshStandardMaterial({
-                    //change 
                     map: texture
                 });
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
-                wall.position.set(x, 2, z);
+                wall.position.set(x, wallHeight / 2, z);
                 wall.userData = { type: 'wall' };
                 scene.add(wall);
+
+                // Calculate and store wall bounding box, adjust w/ collision factor to make less/more stringent
+                const scaledWidth = wallWidth * collisionScale;
+                const scaledDepth = wallDepth * collisionScale;
+
+                const halfScaledWidth = scaledWidth / 2;
+                const halfScaledDepth = scaledDepth / 2;
+
+                const minX = x - halfScaledWidth;
+                const maxX = x + halfScaledWidth;
+                const minY = 0; // Not needed(? Consider removing to optimize)
+                const maxY = wallHeight; // Full wall height
+                const minZ = z - halfScaledDepth;
+                const maxZ = z + halfScaledDepth;
+
+                // Create bounding box for the wall
+                const wallBox = new THREE.Box3(
+                    new THREE.Vector3(minX, minY, minZ),
+                    new THREE.Vector3(maxX, maxY, maxZ)
+                );
+
+                wallBoundingBoxes.push(wallBox);//Store all the coordinates in this array
             } else if (row === 0 && col === maze.length - 2) {
                 //then exit position
                 continue;
