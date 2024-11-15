@@ -12,13 +12,18 @@ let orbitCamera;
 
 let gameScene, menuScene, gameOverScene, currentScene, player, hand, map;
 
-//rmv txt meshes
+let spawnPoint = [];
+
+//temp raycaster 
+let raycaster = new THREE.Raycaster();
+let pointer = new THREE.Vector2();
+
 let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, font;
-let group2;
-let materialsTextGeo = [
-    new THREE.MeshPhongMaterial( { color: 0xffffff, flatShading: true } ),
-    new THREE.MeshPhongMaterial({ color: 0xffffff })
-];
+let menuItems = [];
+
+//mapsize
+const MAX_MAP_SIZE = 9;
+const MIN_MAP_SIZE = 5;
 
 let win = false;
 let vector;
@@ -78,31 +83,20 @@ function init() {
     //torchLight.intensity = 1; Moved to makeGameScene
     currentScene = gameScene;
 
+    spawnPoint = setSpawn();
     makeGameScene();
     makeText();
 
 }
 
 function makeGameScene() {
-    let mapSize = Math.floor(Math.random() * (34 - 15 + 1) + 15);
-    if (mapSize % 2 == 0) {
-        if (mapSize == 34) {
-            mapSize -= 1;
-        } else {
-            mapSize += 1;
-        }
-    }  
-    //Temp small map for testing
-    map = Array.from({ length: mapSize }, () => new Array(mapSize).fill(1))
-    genMaze(map, gameScene);
-
+    loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
     //Player
     const playerGeometry = new THREE.SphereGeometry(0.5, 14, 14);
     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x000fff });
     player = new THREE.Mesh(playerGeometry, playerMaterial);
-    let randomSpawnPt = setSpawn();
-    console.log(randomSpawnPt.x + ' ' + randomSpawnPt.z);
-    player.position.set(randomSpawnPt.x, 0, randomSpawnPt.z);
+    player.position.set(spawnPoint.x, 0, spawnPoint.z);
+    console.log(spawnPoint.x, 0, spawnPoint.z);
     gameScene.add(player);
 
     //Player hand
@@ -138,7 +132,7 @@ function makeText() {
     menuScene.add(menuDirLight);
 
     const menuPtLight = new THREE.PointLight(0xffffff, 1, 0, 0);
-    menuPtLight.color.setHSL(Math.random(), 1, 0.5);
+    menuPtLight.color.setHSL(0, 0, 1);
     menuPtLight.position.set(0, 100, 1400);
     menuScene.add(menuPtLight);
 
@@ -156,7 +150,6 @@ function makeText() {
 
 function createMenuText() {
     if (!font) return;
-
     textGeo = new TextGeometry('PAUSED ||', {
         font: font,
         size: 30,
@@ -168,8 +161,9 @@ function createMenuText() {
     });
     textGeo.computeBoundingBox();
     const centerOffset = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
-    textMesh = new THREE.Mesh(textGeo, materialsTextGeo);
+    textMesh = new THREE.Mesh(textGeo, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh.position.set(centerOffset, 160, 0);
+    textMesh.name = 'PAUSE';
 
     textGeo2 = new TextGeometry('YOU WIN', {
         font: font,
@@ -182,7 +176,7 @@ function createMenuText() {
     });
     textGeo2.computeBoundingBox();
     const centerOffset2 = -0.5 * (textGeo2.boundingBox.max.x - textGeo2.boundingBox.min.x);
-    textMesh2 = new THREE.Mesh(textGeo2, materialsTextGeo);
+    textMesh2 = new THREE.Mesh(textGeo2, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh2.position.set(centerOffset2, 400, 0);
 
     textGeo3 = new TextGeometry (('GAME OVER'), {
@@ -196,7 +190,7 @@ function createMenuText() {
     });
     textGeo3.computeBoundingBox();
     const centerOffset3 = -0.5 * (textGeo3.boundingBox.max.x - textGeo3.boundingBox.min.x);
-    textMesh3 = new THREE.Mesh(textGeo3, materialsTextGeo);
+    textMesh3 = new THREE.Mesh(textGeo3, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh3.position.set(centerOffset3, -40, 0);
 
     textGeo4 = new TextGeometry (('RESTART'), {
@@ -210,8 +204,9 @@ function createMenuText() {
     });
     textGeo4.computeBoundingBox();
     const centerOffset4 = -0.5 * (textGeo4.boundingBox.max.x - textGeo4.boundingBox.min.x);
-    textMesh4 = new THREE.Mesh(textGeo4, materialsTextGeo);
+    textMesh4 = new THREE.Mesh(textGeo4, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh4.position.set(centerOffset4, 250, 0);
+    textMesh4.name = 'RESTART'
 
     textGeo5 = new TextGeometry (('NEW MAP'), {
         font: font,
@@ -224,8 +219,9 @@ function createMenuText() {
     });
     textGeo5.computeBoundingBox();
     const centerOffset5 = -0.5 * (textGeo5.boundingBox.max.x - textGeo5.boundingBox.min.x);
-    textMesh5 = new THREE.Mesh(textGeo5, materialsTextGeo);
+    textMesh5 = new THREE.Mesh(textGeo5, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh5.position.set(centerOffset5, 285, 0);
+    textMesh5.name = 'NEWMAP'
 
     textGeo6 = new TextGeometry (('RETRY MAP'), {
         font: font,
@@ -238,8 +234,9 @@ function createMenuText() {
     });
     textGeo6.computeBoundingBox();
     const centerOffset6 = -0.5 * (textGeo6.boundingBox.max.x - textGeo6.boundingBox.min.x);
-    textMesh6 = new THREE.Mesh(textGeo6, materialsTextGeo);
+    textMesh6 = new THREE.Mesh(textGeo6, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh6.position.set(centerOffset6, -190, 0);
+    textMesh6.name = 'RETRY'
 
     textGeo7 = new TextGeometry (('NEW MAP'), {
         font: font,
@@ -252,24 +249,45 @@ function createMenuText() {
     });
     textGeo7.computeBoundingBox();
     const centerOffset7 = -0.5 * (textGeo7.boundingBox.max.x - textGeo7.boundingBox.min.x);
-    textMesh7 = new THREE.Mesh(textGeo7, materialsTextGeo);
+    textMesh7 = new THREE.Mesh(textGeo7, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh7.position.set(centerOffset7, -155, 0);
+    textMesh7.name = 'NEWMAP';
 
     group.add(textMesh);
     group.add(textMesh2);
     group.add(textMesh3);
-    //group.add(textMesh4);
+    group.add(textMesh4);
     group.add(textMesh5);
     group.add(textMesh6);
     group.add(textMesh7);
+
+    menuItems.push(textMesh);
+    menuItems.push(textMesh4);
+    menuItems.push(textMesh5);
+    menuItems.push(textMesh6);
+    menuItems.push(textMesh7);
 }
 
+function loadMap(max, min) {
+    gameScene.children.filter(wall => wall.userData?.type === 'wall') 
+        .forEach(wall => gameScene.remove(wall));
+    validSpawnPosition.length = 0;
+    let mapSize = Math.floor(Math.random() * (max - min + 1) + min); 
+    if (mapSize % 2 === 0) {
+        mapSize -= 1;
+    }
+    map = Array.from({ length: mapSize }, () => new Array(mapSize).fill(1))
+    genMaze(map, gameScene);
+}
 
 function setSpawn() {
+    if (!player) {
+        return { x: 0, y: 0, z: 0 }; 
+    }
     validSpawnPosition.sort(() => Math.random() - 0.5);
     let x = validSpawnPosition.at(0)[0];
     let z = validSpawnPosition.at(0)[1];
-    return { x: x, y: 25, z: z };
+    return { x: x, y: 0, z: z };
 }
 
 function updateCameraPosition() {
@@ -365,10 +383,48 @@ window.addEventListener('mousemove', (event) => {
         previousMouseX = event.clientX;
     }
 });
+ 
+window.addEventListener('click', (event) => {
+    //Set x and y coordinates of the mouse
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    //set the position of the ray
+    raycaster.setFromCamera(pointer, current_camera);
+    let intersection = raycaster.intersectObjects(menuItems);
+    if (intersection.length > 0){
+        intersection[0].object.material.color.set(0xF8EFE0);
+        switch (intersection[0].object.name) {
+            case 'PAUSE':
+                current_camera = camera;
+                currentScene = gameScene;
+                spawnPoint = setSpawn();
+                player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                break;
+            case 'NEWMAP':
+                loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
+                //rand spawn
+                spawnPoint = setSpawn();
+                player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                current_camera = camera;
+                currentScene = gameScene;
+                //reset game logic function
+                break;
+            case 'RETRY':
+            case 'RESTART':
+                player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                current_camera = camera;
+                currentScene = gameScene;
+                //same map
+                //reset entity logic fn
+        }
+        intersection[0].object = [];
+    }
+});
 
 
-console.log(losingCoordsTEMP.x + ',' + losingCoordsTEMP.z);
+console.log('losing coords' + losingCoordsTEMP.x + ',' + losingCoordsTEMP.z);
 console.log(exitCoords.x + ',' + exitCoords.z);
+
 function checkWin() {
     const vector = camera.getWorldPosition(new THREE.Vector3());
     let distanceFromExit = Math.sqrt(Math.pow(exitCoords.x - vector.x, 2) + Math.pow(exitCoords.z - vector.z, 2));
@@ -376,10 +432,14 @@ function checkWin() {
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, 385, 400);
+        //make sure we're not ontop of winning position
+        player.position.set(50, 0, 50);
     } 
+    //need to track position of entity
     //Temporary; checking for loss menu
     //Losing condition: Entity coords === player coords
-    if (vector.x === losingCoordsTEMP.x && vector.z === losingCoordsTEMP.z) {
+    let distanceFromEntity = Math.sqrt(Math.pow(losingCoordsTEMP.x - losingCoordsTEMP.z, 2) + Math.pow(exitCoords.z - vector.z, 2));
+    if (distanceFromEntity < 0.3) {
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, -55, 400);

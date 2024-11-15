@@ -45,7 +45,7 @@ export function genMaze(maze, scene) {
     //Temp exitcoords
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
     //temp 
-    losingCoordsTEMP = new THREE.Vector3(2, 1.5, 0);
+    losingCoordsTEMP = new THREE.Vector3((maze.length - 5) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
     
     carvePassages(1, 1, maze);
     //carveCorners(maze);
@@ -63,6 +63,7 @@ export function genMaze(maze, scene) {
                 });
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
                 wall.position.set(x, 2, z);
+                wall.userData = { type: 'wall' };
                 scene.add(wall);
             } else if (row === 0 && col === maze.length - 2) {
                 //then exit position
