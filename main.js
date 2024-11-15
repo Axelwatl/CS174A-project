@@ -262,6 +262,14 @@ function createMenuText() {
     group.add(textMesh6);
     group.add(textMesh7);
 
+    textMesh.layers.set(1);
+    textMesh2.layers.set(1);
+    textMesh3.layers.set(1);
+    textMesh4.layers.set(1);
+    textMesh5.layers.set(1);
+    textMesh6.layers.set(1);
+    textMesh7.layers.set(1);
+
     menuItems.push(textMesh);
     menuItems.push(textMesh4);
     menuItems.push(textMesh5);
@@ -355,6 +363,7 @@ window.addEventListener('keydown', function(event) {
             break;
         case 'Escape':
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
+            menuCamera.layers.enable(1);
             if (currentScene === gameScene) {
                 current_camera = camera;
             } else {
@@ -426,6 +435,12 @@ window.addEventListener('click', (event) => {
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     //set the position of the ray
     raycaster.setFromCamera(pointer, current_camera);
+    if (currentScene === menuScene) {
+        raycaster.layers.set(1); 
+    } else {
+        raycaster.layers.set(0); 
+    }
+    menuCamera.layers.enable(1);
     let intersection = raycaster.intersectObjects(menuItems);
     if (intersection.length > 0){
         intersection[0].object.material.color.set(0xF8EFE0);
@@ -433,8 +448,6 @@ window.addEventListener('click', (event) => {
             case 'PAUSE':
                 current_camera = camera;
                 currentScene = gameScene;
-                spawnPoint = setSpawn();
-                player.position.set(spawnPoint.x, 0, spawnPoint.z);
                 break;
             case 'NEWMAP':
                 loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
