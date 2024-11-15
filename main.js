@@ -11,6 +11,8 @@ let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, camera
 let orbitCamera;
 
 let gameScene, menuScene, gameOverScene, currentScene, player, hand, map;
+let entity1, entity1_fov, entity1_detected;    // todo steve: temporary until I formalize what I want to do with these
+
 
 let spawnPoint = [];
 
@@ -74,7 +76,7 @@ function init() {
     ambientLight.intensity = 0.01;
     gameScene.add(ambientLight);
     //Make the room dark
-    ambientLight.intensity = 0.01;
+    ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
     //Dim directional light to cast minimal ambient lighting
     directionalLight.intensity = 0.02;
     //Reduce point light's intensity
@@ -116,6 +118,26 @@ function makeGameScene() {
     hand.add(torchLight.target);
     torchLight.intensity = 1;
 
+    //Create test enemy
+    let entity1_spawn = setSpawn();  // todo steve: expand upon entity spawnpoints and patrolling routes later
+    const entity1_Geometry = new THREE.OctahedronGeometry(1);
+    const entity_Material = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
+    entity1 = new THREE.Mesh(entity1_Geometry, entity_Material);
+    entity1.position.set(entity1_spawn.x, 1, entity1_spawn.z);
+    gameScene.add(entity1);
+    const entity1_fovGeometry = new THREE.ConeGeometry(2, 8, 8, 1);   // base radius, height, radius segments, height segments
+    const entity1_fovMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0xFFFF80, 
+        transparent: true, 
+        opacity: 0.5,
+        side: THREE.DoubleSide,
+    });
+    entity1_fov = new THREE.Mesh(entity1_fovGeometry, entity1_fovMaterial);
+    entity1_fov.rotation.x = -Math.PI / 2; 
+    entity1_fov.position.set(0, 0, 4);
+    entity1.add(entity1_fov);
+
+    // Room
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2, map.length * 2);
     const floorMaterial = new THREE.MeshPhongMaterial({color: 0x555555});
     const floor = new THREE.Mesh(floorGeometry, floorMaterial)
@@ -326,6 +348,53 @@ function isPositionValid(x, z) {
     return true;
 }
 
+function isPlayerInFov(playerPosition, entity, cone) {
+    const coneHeight = cone.geometry.parameters.height;
+    const coneRadius = cone.geometry.parameters.radius;
+    const coneAngle = Math.atan(coneRadius / coneHeight) ; // Should be about 28 degrees or 0.49 radians (r=2 h=8)
+    console.log(coneAngle);
+
+    // Calculate vector from entity to player
+    let entityPosition = new THREE.Vector3();
+    entityPosition = entity.position;
+    //const directionToPlayer = new THREE.Vector3().subVectors(playerPosition, entityPosition);
+    const directionToPlayer = new THREE.Vector3(
+        playerPosition.x - entityPosition.x,
+        0, // Ignore y-coordinate
+        playerPosition.z - entityPosition.z
+    );
+
+    // Check if the player is within the cone's height
+    const distanceToPlayer = directionToPlayer.length();
+    if (distanceToPlayer > coneHeight) {
+        return false; // Player is too far away
+    }
+
+    // Check angle between entity's forward direction and the direction to the player
+    const forwardDirection = new THREE.Vector3(0, 0, 1);
+    forwardDirection.applyQuaternion(entity.quaternion); // Get entity's current forward direction
+    forwardDirection.y = 0;
+    forwardDirection.normalize();
+    directionToPlayer.normalize();
+    
+    const angleToPlayer = forwardDirection.angleTo(directionToPlayer);
+
+    // Check if angle is within the cone's angle
+    return angleToPlayer <= coneAngle;
+}
+
+function updateEntityFov() {
+    let playerPosition = new THREE.Vector3();
+    playerPosition = player.position;
+    
+    if (isPlayerInFov(playerPosition, entity1, entity1_fov)) {
+        entity1_fov.material.color.set(0xFF8080);   // red
+        console.log("cone now red")
+    }
+    else {
+        entity1_fov.material.color.set(0xFFFF80);   // yellow
+    }
+}
 
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
@@ -500,6 +569,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
     checkWin();
+    updateEntityFov();
     // Move camera to follow the player's position
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
