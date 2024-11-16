@@ -5,6 +5,7 @@ export let losingCoordsTEMP;
 export let validSpawnPosition = [];
 export let wallBoundingBoxes = []; // Store wall bounding boxes
 export let collisionScale = 0.95; // From 0 -> 1
+export const texture = new THREE.TextureLoader().load('textures/flesh.jpg');
 
 // Recursive backtracking algorithm
 function carvePassages(x, z, grid) {
@@ -27,7 +28,10 @@ function carvePassages(x, z, grid) {
 }
 
 export function genMaze(maze, scene) {
-    let texture = new THREE.TextureLoader().load('textures/wall_texture.jpg');
+    texture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
+    texture.wrapT = THREE.RepeatWrapping; //Vertical
+    const wallHeight = 30;//wallHeight could be altered
+    texture.repeat.set(1, wallHeight / 2); //Repeat once horizontally; play around w/divisor
     maze[1][1] = 0;
     // Temporary exit
     maze[0][maze.length - 2] = 0;
@@ -44,7 +48,7 @@ export function genMaze(maze, scene) {
     //Used with wall_geometry to make defining the bounding box easier
     const wallWidth = 2;
     const wallDepth = 2;
-    const wallHeight = 5;//wallHeight could be altered
+    //const wallHeight = 5;//wallHeight could be altered
 
     for (let row = 0; row < maze.length; ++row) {
         for (let col = 0; col < maze[row].length; ++col) {

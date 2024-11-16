@@ -2,7 +2,12 @@ import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
-import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes } from './maze.js';
+import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
+export const floorTexture = new THREE.TextureLoader().load('textures/flesh.jpg');
+floorTexture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
+floorTexture.wrapT = THREE.RepeatWrapping; //Vertical wrapping
+const floorRepeat = 4; //More/less reps
+floorTexture.repeat.set(floorRepeat, floorRepeat);
 
 
 let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
@@ -22,10 +27,13 @@ let pointer = new THREE.Vector2();
 
 let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, font;
 let menuItems = [];
+let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
 const MAX_MAP_SIZE = 30;
 const MIN_MAP_SIZE = 20;
+const clock = new THREE.Clock();//To animate texture
+const ambientLight = new THREE.AmbientLight(0x505050);
 
 let win = false;
 let vector;
@@ -40,6 +48,25 @@ function init() {
     menuCamera.position.set(0, 300, 700);
 
     vector = camera.position.clone();
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
+    const backgroundMusic = new THREE.Audio(listener);
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load('/audio/loop_audio.mp3', (buffer) => {
+        backgroundMusic.setBuffer(buffer);
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(1);//Adjust as necessary
+        //backgroundMusic.play();
+    });
+    //Some broswers block autoplay...
+    const startAudio = () => {
+        backgroundMusic.play();
+        window.removeEventListener('click', startAudio);
+        window.removeEventListener('keydown', startAudio);
+    };
+
+    window.addEventListener('click', startAudio);
+    window.addEventListener('keydown', startAudio);
 
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -72,11 +99,11 @@ function init() {
     directionalLight.position.set(0.5, .0, 1.0).normalize();
     gameScene.add(directionalLight);
 
-    const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
+    //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
     ambientLight.intensity = 0.01;
     gameScene.add(ambientLight);
     //Make the room dark
-    ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
+    //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
     //Dim directional light to cast minimal ambient lighting
     directionalLight.intensity = 0.02;
     //Reduce point light's intensity
@@ -104,19 +131,23 @@ function makeGameScene() {
 
     //Player hand
     const handGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
-    const handMaterial = new THREE.MeshStandardMaterial({ color: 0x804fff });
+    //TBD : Work on design for hand material
+    const handMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
     hand = new THREE.Mesh(handGeometry, handMaterial);
     hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
     camera.add(hand); // Fix to player
     gameScene.add(camera);
 
-    //Create torch
-    const torchLight = new THREE.SpotLight(0xffffff, 1, 10, Math.PI / 4, 0.1, 1); 
-    torchLight.position.set(0, 0, 0.5); //Position it slightly in front of the hand
+    // Create torch
+    const torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
+    //Change the color to dark red (0xff0000) and reduce the intensity to 0.5 for a dimmer effect
+    torchLight.position.set(0, 0, 0.5); // Position it slightly in front of the hand
     torchLight.target.position.set(0, 0, -1);
     hand.add(torchLight);
     hand.add(torchLight.target);
-    torchLight.intensity = 1;
+    // Optionally adjust intensity further for desired dimness
+    torchLight.intensity = 0.35; // Make it even dimmer
+
 
     //Create test enemy
     let entity1_spawn = setSpawn();  // todo steve: expand upon entity spawnpoints and patrolling routes later
@@ -139,8 +170,8 @@ function makeGameScene() {
 
     // Room
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2, map.length * 2);
-    const floorMaterial = new THREE.MeshPhongMaterial({color: 0x555555});
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+    const floorMaterial = new THREE.MeshStandardMaterial({map : floorTexture});
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
     floor.position.set(0, 0, 0);
     floor.rotation.x = -Math.PI / 2;
@@ -425,12 +456,19 @@ window.addEventListener('keydown', function(event) {
             deltaZ += Math.sin(player.rotation.y) * speed;
             break;
         case 'k':
+            ambientLight.intensity = 10;
+            keepMoving = false;
+            //Currently in order to view the map after pressing k we will increase the ambient light and stop the walls from moving
+            //This requires the player to press "Escape" to return to normal setting. Not a great solution, should be fixed.
             current_camera = orbitCamera;
-            current_camera.position.set(0, 50, 0);
+            current_camera.position.set(0, 63, 0);
             current_camera.lookAt(0, 0, 0);
             controls.object = current_camera;
             break;
         case 'Escape':
+            ambientLight.intensity = 0.01;
+            keepMoving = true;//Resetting;
+            player.y = 14;
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
             menuCamera.layers.enable(1);
             if (currentScene === gameScene) {
@@ -440,7 +478,7 @@ window.addEventListener('keydown', function(event) {
                 current_camera = menuCamera;
             }
             break;
-    }
+        }
 
    // Movement vector
    let movementVector = new THREE.Vector3(deltaX, 0, deltaZ);
@@ -571,6 +609,16 @@ function animate() {
     checkWin();
     updateEntityFov();
     // Move camera to follow the player's position
+    // Animate the texture for a tremor effect
+    const elapsedTime = clock.getElapsedTime();
+    // Animate floor/wall
+    if(keepMoving)
+    {
+        texture.offset.x = Math.sin(elapsedTime * 0.5) * 2;
+        texture.offset.y = Math.cos(elapsedTime * 0.5) * 2;
+        floorTexture.offset.x = -Math.sin(elapsedTime * 0.5) * 2;
+        floorTexture.offset.z = Math.sin(elapsedTime * 0.5) * 2;
+    }
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
