@@ -27,11 +27,12 @@ let pointer = new THREE.Vector2();
 
 let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, font;
 let menuItems = [];
+let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 30;
-const MIN_MAP_SIZE = 20;
+const MAX_MAP_SIZE = 9;
+const MIN_MAP_SIZE = 5;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -100,7 +101,7 @@ function init() {
     gameScene.add(directionalLight);
 
     //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
-    ambientLight.intensity = 0.01;
+    ambientLight.intensity = 0.5;
     gameScene.add(ambientLight);
     //Make the room dark
     //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
@@ -429,12 +430,34 @@ function updateEntityFov() {
 
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
-    const speed = 0.5;
+    inputs[event.key] = true;
+    switch (event.key) {
+        case 'Escape':
+            ambientLight.intensity = 0.01;
+            keepMoving = true;//Resetting;
+            player.y = 14;
+            currentScene = (currentScene === gameScene) ? menuScene : gameScene;
+            menuCamera.layers.enable(1);
+            if (currentScene === gameScene) {
+                current_camera = camera;
+            } else {
+                menuCamera.position.set(0, 145, 400);
+                current_camera = menuCamera;
+            }
+            break;
+        }
+});
+
+window.addEventListener('keyup', (event) => {
+    inputs[event.key] = false;
+});
+
+function playerMovement(key) {
+    const speed = 0.05;
     //Compute the delta of players distance traversed 
     let deltaX = 0;
     let deltaZ = 0;
-
-    switch (event.key) {
+    switch (key) {
         case 'w': // Forward
         case 'ArrowUp':
             deltaX += Math.sin(player.rotation.y) * speed;
@@ -455,32 +478,8 @@ window.addEventListener('keydown', function(event) {
             deltaX -= Math.cos(player.rotation.y) * speed;
             deltaZ += Math.sin(player.rotation.y) * speed;
             break;
-        case 'k':
-            ambientLight.intensity = 10;
-            keepMoving = false;
-            //Currently in order to view the map after pressing k we will increase the ambient light and stop the walls from moving
-            //This requires the player to press "Escape" to return to normal setting. Not a great solution, should be fixed.
-            current_camera = orbitCamera;
-            current_camera.position.set(0, 63, 0);
-            current_camera.lookAt(0, 0, 0);
-            controls.object = current_camera;
-            break;
-        case 'Escape':
-            ambientLight.intensity = 0.01;
-            keepMoving = true;//Resetting;
-            player.y = 14;
-            currentScene = (currentScene === gameScene) ? menuScene : gameScene;
-            menuCamera.layers.enable(1);
-            if (currentScene === gameScene) {
-                current_camera = camera;
-            } else {
-                menuCamera.position.set(0, 145, 400);
-                current_camera = menuCamera;
-            }
-            break;
-        }
-
-   // Movement vector
+    }
+    // Movement vector
    let movementVector = new THREE.Vector3(deltaX, 0, deltaZ);
 
    // Break your movement into 1000 steps and check if a collision occured; needed to stop the player if moving too fast
@@ -500,12 +499,9 @@ window.addEventListener('keydown', function(event) {
            break;
        }
    }
-
-
     // Update camera and other necessary components
     updateCameraPosition();
-});
-
+}
 
 //Handle rotation with left click
 let isLeftClickHeld = false;
@@ -619,6 +615,12 @@ function animate() {
         floorTexture.offset.x = -Math.sin(elapsedTime * 0.5) * 2;
         floorTexture.offset.z = Math.sin(elapsedTime * 0.5) * 2;
     }
+
+    Object.keys(inputs).forEach(ip => {
+        if (inputs[ip]) 
+            playerMovement(ip);
+    });
+    
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
