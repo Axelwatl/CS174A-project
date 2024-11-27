@@ -506,13 +506,30 @@ function playerMovement(key) {
 //Handle rotation with left click
 let isLeftClickHeld = false;
 let previousMouseX = null;
-
+let mesh = null;
 // Deact Orbitcontrols when left clicked
 window.addEventListener('mousedown', (event) => {
     if (event.button === 0) {
         isLeftClickHeld = true;
         previousMouseX = event.clientX;
         controls.enabled = false; // Disable
+    }
+    //Set x and y coordinates of the mouse
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    //set the position of the ray
+    raycaster.setFromCamera(pointer, current_camera);
+    if (currentScene === menuScene) {
+        raycaster.layers.set(1); 
+    } else {
+        raycaster.layers.set(0); 
+    }
+    menuCamera.layers.enable(1);
+    let intersection = raycaster.intersectObjects(menuItems);
+    if (intersection.length > 0) {
+        mesh = intersection[0].object;
+    } else {
+        mesh = null;
     }
 });
 window.addEventListener('mouseup', (event) => {
@@ -545,7 +562,7 @@ window.addEventListener('click', (event) => {
     }
     menuCamera.layers.enable(1);
     let intersection = raycaster.intersectObjects(menuItems);
-    if (intersection.length > 0){
+    if (intersection.length > 0 && mesh === intersection[0].object){
         intersection[0].object.material.color.set(0xF8EFE0);
         switch (intersection[0].object.name) {
             case 'PAUSE':
@@ -620,7 +637,6 @@ function animate() {
         if (inputs[ip]) 
             playerMovement(ip);
     });
-    
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
