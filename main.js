@@ -3,6 +3,8 @@ import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
 import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
+import { OBJLoader } from 'three/examples/jsm/Addons.js';
+import { MTLLoader } from 'three/examples/jsm/Addons.js';
 export const floorTexture = new THREE.TextureLoader().load('textures/flesh.jpg');
 floorTexture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
 floorTexture.wrapT = THREE.RepeatWrapping; //Vertical wrapping
@@ -31,8 +33,8 @@ let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 9;
-const MIN_MAP_SIZE = 5;
+const MAX_MAP_SIZE =30;
+const MIN_MAP_SIZE = 30;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -101,7 +103,7 @@ function init() {
     gameScene.add(directionalLight);
 
     //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
-    ambientLight.intensity = 0.5;
+    ambientLight.intensity = 0.6;
     gameScene.add(ambientLight);
     //Make the room dark
     //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
@@ -130,6 +132,30 @@ function makeGameScene() {
     console.log(spawnPoint.x, 0, spawnPoint.z);
     gameScene.add(player);
 
+
+    //Flashlight by Robert Ramsay [CC-BY] via Poly Pizza
+    //Can change later if different model preferred 
+    const mtlLoader = new MTLLoader();
+    mtlLoader.load('./assets/Flashlight/FlashlightAndMat.mtl', (mat) => {
+        mat.preload();
+        const objLoader = new OBJLoader();
+        objLoader.setMaterials(mat);
+        objLoader.load('./assets/Flashlight/FlashlightAndMat.obj', (flashlight) => {
+            flashlight.scale.set(0.031, 0.031, 0.031);
+            flashlight.position.set(0.3, -0.2, -0.5);
+            camera.add(flashlight);
+            // Create torch
+            const torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
+            //Change the color to dark red (0xff0000) and reduce the intensity to 0.5 for a dimmer effect
+            torchLight.position.set(0, 0, 0.5); // Position it slightly in front of the hand
+            torchLight.target.position.set(0, 0, -1);
+            flashlight.add(torchLight);
+            flashlight.add(torchLight.target);
+            // Optionally adjust intensity further for desired dimness
+            torchLight.intensity = 0.35; // Make it even dimmer
+        });
+    });
+    /*
     //Player hand
     const handGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
     //TBD : Work on design for hand material
@@ -137,8 +163,8 @@ function makeGameScene() {
     hand = new THREE.Mesh(handGeometry, handMaterial);
     hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
     camera.add(hand); // Fix to player
-    gameScene.add(camera);
-
+    
+    
     // Create torch
     const torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
     //Change the color to dark red (0xff0000) and reduce the intensity to 0.5 for a dimmer effect
@@ -148,7 +174,8 @@ function makeGameScene() {
     hand.add(torchLight.target);
     // Optionally adjust intensity further for desired dimness
     torchLight.intensity = 0.35; // Make it even dimmer
-
+    */
+    gameScene.add(camera);
 
     //Create test enemy
     let entity1_spawn = setSpawn();  // todo steve: expand upon entity spawnpoints and patrolling routes later
@@ -170,7 +197,7 @@ function makeGameScene() {
     entity1.add(entity1_fov);
 
     // Room
-    const floorGeometry = new THREE.PlaneGeometry(map.length * 2, map.length * 2);
+    const floorGeometry = new THREE.PlaneGeometry(map.length * 2 + 1, map.length * 2 + 1);
     const floorMaterial = new THREE.MeshStandardMaterial({map : floorTexture});
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 
@@ -427,13 +454,23 @@ function updateEntityFov() {
         entity1_fov.material.color.set(0xFFFF80);   // yellow
     }
 }
-
+let shift = false;
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
     inputs[event.key] = true;
     switch (event.key) {
+        case 'k':
+            ambientLight.intensity = 10;
+            keepMoving = false;
+            //Currently in order to view the map after pressing k we will increase the ambient light and stop the walls from moving
+            //This requires the player to press "Escape" to return to normal setting. Not a great solution, should be fixed.
+            current_camera = orbitCamera;
+            current_camera.position.set(0, 63, 0);
+            current_camera.lookAt(0, 0, 0);
+            controls.object = current_camera;
+            break;
         case 'Escape':
-            ambientLight.intensity = 0.01;
+            ambientLight.intensity = 0.6;
             keepMoving = true;//Resetting;
             player.y = 14;
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
@@ -540,15 +577,20 @@ window.addEventListener('mouseup', (event) => {
     }
 });
 window.addEventListener('mousemove', (event) => {
-    if (isLeftClickHeld && previousMouseX !== null) {
+    if (document.pointerLockElement === renderer.domElement) {
+        /*
         const deltaX = event.clientX - previousMouseX;
         const rotationSpeed = 0.005;
         // Rotate the player around its y-axis (YAW Rotation; )
         player.rotation.y -= deltaX * rotationSpeed;
         previousMouseX = event.clientX;
+        */
+        const rotationSpeed = 0.005;
+        // Rotate the player around its y-axis (YAW Rotation; )
+        player.rotation.y -= event.movementX * rotationSpeed;
+        //previousMouseX = event.clientX;
     }
 });
- 
 window.addEventListener('click', (event) => {
     //Set x and y coordinates of the mouse
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -588,6 +630,7 @@ window.addEventListener('click', (event) => {
         }
         intersection[0].object = [];
     }
+    renderer.domElement.requestPointerLock();
 });
 
 
@@ -601,8 +644,8 @@ function checkWin() {
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, 385, 400);
-        //make sure we're not ontop of winning position
-        player.position.set(50, 0, 50);
+        player.position.set(player.position.x - 5, 0, player.position.z - 5);
+        document.exitPointerLock();
     } 
     //need to track position of entity
     //Temporary; checking for loss menu
