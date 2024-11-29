@@ -27,14 +27,14 @@ let spawnPoint = [];
 let raycaster = new THREE.Raycaster();
 let pointer = new THREE.Vector2();
 
-let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, font;
+let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textMesh8, textMesh9, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, textGeo8, textGeo9, font;
 let menuItems = [];
 let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE =30;
-const MIN_MAP_SIZE = 30;
+const MAX_MAP_SIZE = 30;
+const MIN_MAP_SIZE = 20;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -46,9 +46,10 @@ init();
 function init() {
     camera = new THREE.PerspectiveCamera(90, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 25, 0);
-
+    
     menuCamera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 0.1, 3000);
-    menuCamera.position.set(0, 300, 700);
+    menuCamera.layers.enable(1);
+    menuCamera.position.set(0, -270, 400);
 
     vector = camera.position.clone();
     const listener = new THREE.AudioListener();
@@ -83,11 +84,11 @@ function init() {
     controls.target.set(0,0,0);
     //controls.enableKeys = false;
 
-    current_camera = camera;
+    current_camera = menuCamera;
 
     gameScene = new THREE.Scene();
     gameScene.background = new THREE.Color(0x000000);
-    gameScene.fog = new THREE.Fog(0xffffff, 200, 1000);
+    gameScene.fog = new THREE.Fog(0x000000, 5, 13);
 
     menuScene = new THREE.Scene();
     menuScene.background = new THREE.Color(0x000000);
@@ -103,7 +104,7 @@ function init() {
     gameScene.add(directionalLight);
 
     //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
-    ambientLight.intensity = 0.6;
+    ambientLight.intensity = 0.4;
     gameScene.add(ambientLight);
     //Make the room dark
     //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
@@ -113,7 +114,7 @@ function init() {
     pointLight.intensity = 0.3;
 
     //torchLight.intensity = 1; Moved to makeGameScene
-    currentScene = gameScene;
+    currentScene = menuScene;
 
     //spawnPoint = setSpawn();
     makeGameScene();
@@ -205,7 +206,7 @@ function makeGameScene() {
     floor.rotation.x = -Math.PI / 2;
     
     gameScene.add(floor);
-}
+} 
 
 function makeText() {
     //lighting
@@ -229,7 +230,7 @@ function makeText() {
     });
     
 }
-
+let modelEntity;
 function createMenuText() {
     if (!font) return;
     textGeo = new TextGeometry('PAUSED ||', {
@@ -335,6 +336,40 @@ function createMenuText() {
     textMesh7.position.set(centerOffset7, -155, 0);
     textMesh7.name = 'NEWMAP';
 
+    textGeo8 = new TextGeometry (('SHADOWS IN THE \n     LABYRINTH'), {
+        font: font,
+        size: 20,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+    textGeo8.computeBoundingBox();
+    const centerOffset8 = -0.5 * (textGeo8.boundingBox.max.x - textGeo8.boundingBox.min.x);
+    textMesh8 = new THREE.Mesh(textGeo8, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
+    textMesh8.position.set(centerOffset8, -245, 0);
+    textMesh8.name = 'TITLE';
+
+    textGeo9 = new TextGeometry (('START'), {
+        font: font,
+        size: 20,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+    textGeo9.computeBoundingBox();
+    const centerOffset9 = -0.5 * (textGeo9.boundingBox.max.x - textGeo9.boundingBox.min.x);
+    textMesh9 = new THREE.Mesh(textGeo9, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    textMesh9.position.set(centerOffset9, -410, 0);
+    textMesh9.name = 'START';
+
+    modelEntity = entity1.clone();
+    modelEntity.position.set(0, -270, 370);
+    menuScene.add(modelEntity);
+
     group.add(textMesh);
     group.add(textMesh2);
     group.add(textMesh3);
@@ -342,6 +377,8 @@ function createMenuText() {
     group.add(textMesh5);
     group.add(textMesh6);
     group.add(textMesh7);
+    group.add(textMesh8);
+    group.add(textMesh9);
 
     textMesh.layers.set(1);
     textMesh2.layers.set(1);
@@ -350,12 +387,15 @@ function createMenuText() {
     textMesh5.layers.set(1);
     textMesh6.layers.set(1);
     textMesh7.layers.set(1);
+    textMesh8.layers.set(1);
+    textMesh9.layers.set(1);
 
     menuItems.push(textMesh);
     menuItems.push(textMesh4);
     menuItems.push(textMesh5);
     menuItems.push(textMesh6);
     menuItems.push(textMesh7);
+    menuItems.push(textMesh9);
 }
 
 function loadMap(max, min) {
@@ -460,6 +500,7 @@ window.addEventListener('keydown', function(event) {
     inputs[event.key] = true;
     switch (event.key) {
         case 'k':
+            gameScene.fog = new THREE.Fog(0x000000, 500, 1300);
             ambientLight.intensity = 10;
             keepMoving = false;
             //Currently in order to view the map after pressing k we will increase the ambient light and stop the walls from moving
@@ -627,6 +668,11 @@ window.addEventListener('click', (event) => {
                 currentScene = gameScene;
                 //same map
                 //reset entity logic fn
+                break;
+            case 'START':
+                current_camera = camera;
+                currentScene = gameScene;
+                break;
         }
         intersection[0].object = [];
     }
@@ -668,6 +714,11 @@ function animate() {
     // Animate the texture for a tremor effect
     const elapsedTime = clock.getElapsedTime();
     // Animate floor/wall
+
+    if (modelEntity) {
+        modelEntity.rotation.y += 0.01;
+    }
+
     if(keepMoving)
     {
         texture.offset.x = Math.sin(elapsedTime * 0.5) * 2;
