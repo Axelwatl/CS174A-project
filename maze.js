@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export let exitCoords;
 export let losingCoordsTEMP;
@@ -27,10 +28,31 @@ function carvePassages(x, z, grid) {
     });
 }
 
+function placeModels(validSpawnPosition, scene, path, scale, y) {
+    const loader = new GLTFLoader();
+    const maxModelCount = validSpawnPosition.length / 8; 
+
+    //valid positions
+    const pos = validSpawnPosition.sort(() => Math.random() - 0.5).slice(0, maxModelCount);
+
+    loader.load(
+        path, 
+        (mat) => {
+            const model = mat.scene;
+            pos.forEach((p) => {
+                const m = model.clone();
+                m.position.set(p[0] - 3, y, p[1] + 4); 
+                m.scale.set(scale, scale, scale);
+                scene.add(m);
+            });
+        }
+    );
+}
+
 export function genMaze(maze, scene) {
     texture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
     texture.wrapT = THREE.RepeatWrapping; //Vertical
-    const wallHeight = 30;//wallHeight could be altered
+    const wallHeight = 10;//wallHeight could be altered
     texture.repeat.set(1, wallHeight / 2); //Repeat once horizontally; play around w/divisor
     maze[1][1] = 0;
     // Temporary exit
@@ -94,4 +116,6 @@ export function genMaze(maze, scene) {
             }
         }
     }
+    placeModels(validSpawnPosition, scene, 'assets/Bones.glb', 0.015, 0.21);
+    placeModels(validSpawnPosition, scene, 'assets/Blood.glb', 0.5, 0.01);
 }

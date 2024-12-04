@@ -497,6 +497,7 @@ function updateEntityFov() {
 let shift = false;
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
+    if (event.shiftKey) shift = true;
     inputs[event.key] = true;
     switch (event.key) {
         case 'k':
@@ -528,6 +529,7 @@ window.addEventListener('keydown', function(event) {
 
 window.addEventListener('keyup', (event) => {
     inputs[event.key] = false;
+    shift = false;
 });
 
 function playerMovement(key) {
@@ -538,6 +540,10 @@ function playerMovement(key) {
     switch (key) {
         case 'w': // Forward
         case 'ArrowUp':
+            if (shift) {
+                deltaX += Math.sin(player.rotation.y) * (speed + 0.0026);
+                deltaZ += Math.cos(player.rotation.y) * (speed + 0.0026);
+            }
             deltaX += Math.sin(player.rotation.y) * speed;
             deltaZ += Math.cos(player.rotation.y) * speed;
             break;
