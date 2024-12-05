@@ -14,6 +14,9 @@ floorTexture.repeat.set(floorRepeat, floorRepeat);
 
 let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
 
+let quit = false;
+let inMenu = true;
+
 //temp
 let orbitCamera;
 
@@ -21,7 +24,10 @@ let gameScene, menuScene, gameOverScene, currentScene, player, hand, map;
 let entity1, entity1_fov, entity1_detected;    // todo steve: temporary until I formalize what I want to do with these
 
 
+let textGeoA, textMeshA, textGeoB, textMeshB, textGeoC, textMeshC;
+
 let spawnPoint = [];
+let entitySpawn = [];
 
 //temp raycaster 
 let raycaster = new THREE.Raycaster();
@@ -34,7 +40,7 @@ let keepMoving = true;//The walls and floor should keep moving unless k was pres
 
 //mapsize
 const MAX_MAP_SIZE = 30;
-const MIN_MAP_SIZE = 20;
+const MIN_MAP_SIZE = 25;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -248,6 +254,51 @@ function createMenuText() {
     textMesh.position.set(centerOffset, 160, 0);
     textMesh.name = 'PAUSE';
 
+    textGeoC = new TextGeometry (('QUIT'), {
+        font: font,
+        size: 20,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+    textGeoC.computeBoundingBox();
+    const centerOffsetC = -0.5 * (textGeoC.boundingBox.max.x - textGeoC.boundingBox.min.x);
+    textMeshC = new THREE.Mesh(textGeoC, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
+    textMeshC.position.set(centerOffsetC, 20, 0);
+    textMeshC.name = 'QUIT'
+
+    textGeoA = new TextGeometry (('NEW MAP'), {
+        font: font,
+        size: 10,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+    textGeoA.computeBoundingBox();
+    const centerOffsetA = -0.5 * (textGeoA.boundingBox.max.x - textGeoA.boundingBox.min.x);
+    textMeshA = new THREE.Mesh(textGeoA, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    textMeshA.position.set(centerOffsetA, 55, 0);
+    textMeshA.name = 'NEWMAP'
+
+    textGeoB = new TextGeometry (('RESTART'), {
+        font: font,
+        size: 10,
+        depth: 30,
+        curveSegments: 3,
+        bevelThickness: 2,
+        bevelSize: 1,
+        bevelEnabled: true
+    });
+    textGeoB.computeBoundingBox();
+    const centerOffsetB = -0.5 * (textGeoB.boundingBox.max.x - textGeoB.boundingBox.min.x);
+    textMeshB = new THREE.Mesh(textGeoB, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    textMeshB.position.set(centerOffsetB, 85, 0);
+    textMeshB.name = 'RESTART'
+
     textGeo2 = new TextGeometry('YOU WIN', {
         font: font,
         size: 30,
@@ -276,9 +327,9 @@ function createMenuText() {
     textMesh3 = new THREE.Mesh(textGeo3, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh3.position.set(centerOffset3, -40, 0);
 
-    textGeo4 = new TextGeometry (('RESTART'), {
+    textGeo4 = new TextGeometry (('QUIT'), {
         font: font,
-        size: 20,
+        size: 10,
         depth: 30,
         curveSegments: 3,
         bevelThickness: 2,
@@ -287,13 +338,13 @@ function createMenuText() {
     });
     textGeo4.computeBoundingBox();
     const centerOffset4 = -0.5 * (textGeo4.boundingBox.max.x - textGeo4.boundingBox.min.x);
-    textMesh4 = new THREE.Mesh(textGeo4, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    textMesh4 = new THREE.Mesh(textGeo4, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh4.position.set(centerOffset4, 250, 0);
-    textMesh4.name = 'RESTART'
+    textMesh4.name = 'QUIT'
 
     textGeo5 = new TextGeometry (('NEW MAP'), {
         font: font,
-        size: 20,
+        size: 15,
         depth: 30,
         curveSegments: 3,
         bevelThickness: 2,
@@ -306,7 +357,7 @@ function createMenuText() {
     textMesh5.position.set(centerOffset5, 285, 0);
     textMesh5.name = 'NEWMAP'
 
-    textGeo6 = new TextGeometry (('RETRY MAP'), {
+    textGeo6 = new TextGeometry (('QUIT'), {
         font: font,
         size: 20,
         depth: 30,
@@ -317,13 +368,13 @@ function createMenuText() {
     });
     textGeo6.computeBoundingBox();
     const centerOffset6 = -0.5 * (textGeo6.boundingBox.max.x - textGeo6.boundingBox.min.x);
-    textMesh6 = new THREE.Mesh(textGeo6, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    textMesh6 = new THREE.Mesh(textGeo6, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh6.position.set(centerOffset6, -190, 0);
-    textMesh6.name = 'RETRY'
+    textMesh6.name = 'QUIT'
 
     textGeo7 = new TextGeometry (('NEW MAP'), {
         font: font,
-        size: 20,
+        size: 10,
         depth: 30,
         curveSegments: 3,
         bevelThickness: 2,
@@ -379,6 +430,9 @@ function createMenuText() {
     group.add(textMesh7);
     group.add(textMesh8);
     group.add(textMesh9);
+    group.add(textMeshA);
+    group.add(textMeshB);
+    group.add(textMeshC);
 
     textMesh.layers.set(1);
     textMesh2.layers.set(1);
@@ -389,6 +443,9 @@ function createMenuText() {
     textMesh7.layers.set(1);
     textMesh8.layers.set(1);
     textMesh9.layers.set(1);
+    textMeshA.layers.set(1);
+    textMeshB.layers.set(1);
+    textMeshC.layers.set(1);
 
     menuItems.push(textMesh);
     menuItems.push(textMesh4);
@@ -396,6 +453,9 @@ function createMenuText() {
     menuItems.push(textMesh6);
     menuItems.push(textMesh7);
     menuItems.push(textMesh9);
+    menuItems.push(textMeshA);
+    menuItems.push(textMeshB);
+    menuItems.push(textMeshC);
 }
 
 function loadMap(max, min) {
@@ -512,6 +572,9 @@ window.addEventListener('keydown', function(event) {
             controls.object = current_camera;
             break;
         case 'Escape':
+            if (inMenu) {
+                break;
+            } 
             ambientLight.intensity = 0.6;
             keepMoving = true;//Resetting;
             player.y = 14;
@@ -652,7 +715,6 @@ window.addEventListener('click', (event) => {
     menuCamera.layers.enable(1);
     let intersection = raycaster.intersectObjects(menuItems);
     if (intersection.length > 0 && mesh === intersection[0].object){
-        intersection[0].object.material.color.set(0xF8EFE0);
         switch (intersection[0].object.name) {
             case 'PAUSE':
                 current_camera = camera;
@@ -663,6 +725,9 @@ window.addEventListener('click', (event) => {
                 //rand spawn
                 spawnPoint = setSpawn();
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                entitySpawn = setSpawn();
+                entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
+                inMenu = false;
                 current_camera = camera;
                 currentScene = gameScene;
                 //reset game logic function
@@ -672,17 +737,35 @@ window.addEventListener('click', (event) => {
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
                 current_camera = camera;
                 currentScene = gameScene;
+                inMenu = false;
                 //same map
                 //reset entity logic fn
                 break;
             case 'START':
+                if (quit) {
+                    loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
+                    spawnPoint = setSpawn();
+                    player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                    entitySpawn = setSpawn();
+                    entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
+                    renderer.domElement.requestPointerLock();
+                }
+                quit = false;
+                inMenu = false;
                 current_camera = camera;
                 currentScene = gameScene;
+                break;
+            case 'QUIT':
+                quit = true;
+                inMenu = true;
+                current_camera = menuCamera;
+                currentScene = menuScene;
+                menuCamera.position.set(0, -270, 400);
                 break;
         }
         intersection[0].object = [];
     }
-    renderer.domElement.requestPointerLock();
+    if (!quit) renderer.domElement.requestPointerLock();
 });
 
 
@@ -697,6 +780,7 @@ function checkWin() {
         current_camera = menuCamera;
         menuCamera.position.set(0, 385, 400);
         player.position.set(player.position.x - 5, 0, player.position.z - 5);
+        inMenu = true;
         document.exitPointerLock();
     } 
     //need to track position of entity
@@ -708,6 +792,9 @@ function checkWin() {
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, -55, 400);
+        player.position.set(player.position.x - 5, 0, player.position.z - 5);
+        inMenu = true;
+        document.exitPointerLock();
     }
 }
 
