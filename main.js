@@ -154,6 +154,9 @@ function makeGameScene() {
     console.log(spawnPoint.x, 0, spawnPoint.z);
     gameScene.add(player);
 
+    // Add and (re)place entities
+    //addEntities();
+
 
     //Flashlight by Robert Ramsay [CC-BY] via Poly Pizza
     //Can change later if different model preferred 
@@ -226,9 +229,6 @@ function makeGameScene() {
     entity1_fov.rotation.x = -Math.PI / 2; 
     entity1_fov.position.set(0, 0, 4);
     entity1.add(entity1_fov);
-
-    // Create and place entities
-    addEntities();
 
     // Room
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2 + 1, map.length * 2 + 1);
@@ -754,8 +754,6 @@ window.addEventListener('click', (event) => {
                 //rand spawn
                 spawnPoint = setSpawn();
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
-                entitySpawn = setSpawn();
-                entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
                 resetGame();
                 //reset game logic function
                 break;
@@ -771,8 +769,6 @@ window.addEventListener('click', (event) => {
                     loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
                     spawnPoint = setSpawn();
                     player.position.set(spawnPoint.x, 0, spawnPoint.z);
-                    entitySpawn = setSpawn();
-                    entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
                     renderer.domElement.requestPointerLock();
                 }
                 resetGame();
@@ -799,8 +795,9 @@ function resetGame() {
     stamina = 100;
     staminaSection.id = 'stamina-show';
     staminaText.id = 'stamina-text-show';
-    staminaContainer.id = 'stamina-container'
+    staminaContainer.id = 'stamina-container';
     staminaAmt.id = 'stamina';
+    addEntities();
 }
 
 console.log(exitCoords.x + ',' + exitCoords.z);

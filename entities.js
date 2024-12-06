@@ -6,8 +6,30 @@ export let entityList = [];
 
 const ENTITY_COUNT = 1;
 const ENTITY_SPEED = 1.0;
+const ENTITY_CHASE_SPEED = 2.0;
 
 export function addEntities(){
+    while (entityList.length > 0) {
+        let mesh = entityList[entityList.length - 1];
+
+        gameScene.remove(mesh);
+
+        if (mesh.geometry) {
+            mesh.geometry.dispose();
+        }
+        if (mesh.material) {
+            if (Array.isArray(mesh.material)) {
+                mesh.material.forEach(mat => mat.dispose());
+            } else {
+                mesh.material.dispose();
+            }
+        }
+
+        entityList.pop();
+    }
+
+    entityList = [];
+    
 
     for (let i = 0; i < ENTITY_COUNT; i++) {
         // Entity Mesh
@@ -65,8 +87,20 @@ export function updateEntities(time){
     for(let entity of entityList) {
         if (entity.detected) {
             // Player was seen; make entity chase player
-            //entity.mesh.
-            console.log("t");
+            let playerPosition = player.position;
+            let entityPosition = entity.mesh.position;
+            entity.mesh.lookAt(playerPosition);
+            const directionToPlayer = new THREE.Vector3(
+                playerPosition.x - entityPosition.x,
+                0,
+                playerPosition.z - entityPosition.z
+            );
+
+            let nextPosition = directionToPlayer.normalize();
+            nextPosition.multiplyScalar(ENTITY_CHASE_SPEED * 0.01);
+            nextPosition.add(entityPosition);
+            entity.mesh.position.set(nextPosition.x, nextPosition.y, nextPosition.z);
+            console.log(nextPosition);
         }
         else {
             // Linear interpolation between spawnPoint and patrolPoint
