@@ -5,6 +5,7 @@ import { TextGeometry } from 'three/examples/jsm/Addons.js';
 import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
 import { OBJLoader } from 'three/examples/jsm/Addons.js';
 import { MTLLoader } from 'three/examples/jsm/Addons.js';
+import { entityList, addEntities, updateEntities, isPlayerInFov, updateEntityFov } from './entities.js';
 export const floorTexture = new THREE.TextureLoader().load('textures/flesh.jpg');
 floorTexture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
 floorTexture.wrapT = THREE.RepeatWrapping; //Vertical wrapping
@@ -20,7 +21,8 @@ let inMenu = true;
 //temp
 let orbitCamera;
 
-let gameScene, menuScene, gameOverScene, currentScene, player, hand, map;
+export let gameScene, player;
+let menuScene, gameOverScene, currentScene, hand, map;
 let entity1, entity1_fov, entity1_detected;    // todo steve: temporary until I formalize what I want to do with these
 
 
@@ -39,8 +41,8 @@ let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 30;
-const MIN_MAP_SIZE = 25;
+const MAX_MAP_SIZE = 30;    // originally 30
+const MIN_MAP_SIZE = 25;    // originally 25
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -190,7 +192,7 @@ function makeGameScene() {
     const entity_Material = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     entity1 = new THREE.Mesh(entity1_Geometry, entity_Material);
     entity1.position.set(entity1_spawn.x, 1, entity1_spawn.z);
-    gameScene.add(entity1);
+    //gameScene.add(entity1);
     const entity1_fovGeometry = new THREE.ConeGeometry(2, 8, 8, 1);   // base radius, height, radius segments, height segments
     const entity1_fovMaterial = new THREE.MeshStandardMaterial({ 
         color: 0xFFFF80, 
@@ -202,6 +204,9 @@ function makeGameScene() {
     entity1_fov.rotation.x = -Math.PI / 2; 
     entity1_fov.position.set(0, 0, 4);
     entity1.add(entity1_fov);
+
+    // Create and place entities
+    addEntities();
 
     // Room
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2 + 1, map.length * 2 + 1);
@@ -480,6 +485,16 @@ function setSpawn() {
     return { x: x, y: 0, z: z };
 }
 
+export function getTwoValidMazeSpaces() {   // Variation of setSpawn function but for two points
+    validSpawnPosition.sort(() => Math.random() - 0.5);
+    let point1 = validSpawnPosition.at(0);
+    let point2 = validSpawnPosition.at(1);
+    return [
+        { x: point1[0], y: 1, z: point1[1] },
+        { x: point2[0], y: 1, z: point2[1] }
+    ];
+}
+
 function updateCameraPosition() {
     // Camera offset from player; can adjust if necessary
     const cameraOffset = new THREE.Vector3(0, 1.5, 0);
@@ -507,53 +522,6 @@ function isPositionValid(x, z) {
     return true;
 }
 
-function isPlayerInFov(playerPosition, entity, cone) {
-    const coneHeight = cone.geometry.parameters.height;
-    const coneRadius = cone.geometry.parameters.radius;
-    const coneAngle = Math.atan(coneRadius / coneHeight) ; // Should be about 28 degrees or 0.49 radians (r=2 h=8)
-    console.log(coneAngle);
-
-    // Calculate vector from entity to player
-    let entityPosition = new THREE.Vector3();
-    entityPosition = entity.position;
-    //const directionToPlayer = new THREE.Vector3().subVectors(playerPosition, entityPosition);
-    const directionToPlayer = new THREE.Vector3(
-        playerPosition.x - entityPosition.x,
-        0, // Ignore y-coordinate
-        playerPosition.z - entityPosition.z
-    );
-
-    // Check if the player is within the cone's height
-    const distanceToPlayer = directionToPlayer.length();
-    if (distanceToPlayer > coneHeight) {
-        return false; // Player is too far away
-    }
-
-    // Check angle between entity's forward direction and the direction to the player
-    const forwardDirection = new THREE.Vector3(0, 0, 1);
-    forwardDirection.applyQuaternion(entity.quaternion); // Get entity's current forward direction
-    forwardDirection.y = 0;
-    forwardDirection.normalize();
-    directionToPlayer.normalize();
-    
-    const angleToPlayer = forwardDirection.angleTo(directionToPlayer);
-
-    // Check if angle is within the cone's angle
-    return angleToPlayer <= coneAngle;
-}
-
-function updateEntityFov() {
-    let playerPosition = new THREE.Vector3();
-    playerPosition = player.position;
-    
-    if (isPlayerInFov(playerPosition, entity1, entity1_fov)) {
-        entity1_fov.material.color.set(0xFF8080);   // red
-        console.log("cone now red")
-    }
-    else {
-        entity1_fov.material.color.set(0xFFFF80);   // yellow
-    }
-}
 let shift = false;
 window.addEventListener('keydown', function(event) {
     console.log('Key pressed:', event.key); // For debugging
@@ -806,6 +774,7 @@ function animate() {
     // Move camera to follow the player's position
     // Animate the texture for a tremor effect
     const elapsedTime = clock.getElapsedTime();
+    updateEntities(elapsedTime);
     // Animate floor/wall
 
     if (modelEntity) {
