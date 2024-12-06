@@ -564,7 +564,7 @@ let moving = false;
 window.addEventListener('keydown', function(event) {
     //console.log('Key pressed:', event.key); // For debugging
     if (event.shiftKey) shift = true;
-    inputs[event.key] = true;
+    inputs[event.key.toLowerCase()] = true;
     switch (event.key) {
         case 'k':
             gameScene.fog = new THREE.Fog(0x000000, 500, 1300);
@@ -604,7 +604,7 @@ window.addEventListener('keydown', function(event) {
 });
 
 window.addEventListener('keyup', (event) => {
-    inputs[event.key] = false;
+    inputs[event.key.toLowerCase()] = false;
     shift = false;
     moving = false;
 });
@@ -891,8 +891,8 @@ function animate() {
     {
         texture.offset.x = Math.sin(elapsedTime * 0.5) * 2;
         texture.offset.y = Math.cos(elapsedTime * 0.5) * 2;
-        floorTexture.offset.x = -Math.sin(elapsedTime * 0.5) * 2;
-        floorTexture.offset.z = Math.sin(elapsedTime * 0.5) * 2;
+        floorTexture.offset.x = -Math.sin(elapsedTime * 0.01) * 2;
+        floorTexture.offset.z = Math.sin(elapsedTime * 0.01) * 2;
     }
 
     if (stamina >= 100) {
@@ -929,7 +929,7 @@ function animate() {
         }
         walkingAudio.setPlaybackRate(1.0);
     }
-    updateEntities(elapsedTime);
+    
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
