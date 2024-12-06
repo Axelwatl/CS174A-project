@@ -1,20 +1,19 @@
 import * as THREE from 'three';
-import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
 import { genMaze, exitCoords, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
 import { OBJLoader } from 'three/examples/jsm/Addons.js';
 import { MTLLoader } from 'three/examples/jsm/Addons.js';
-import { entityList, addEntities, updateEntities, isPlayerInFov, updateEntityFov } from './entities.js';
+import { loadEntityModel, addEntities, entityList, updateEntities, isPlayerInFov, updateEntityFov } from './entities.js';
+
 export const floorTexture = new THREE.TextureLoader().load('textures/flesh.jpg');
-floorTexture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
-floorTexture.wrapT = THREE.RepeatWrapping; //Vertical wrapping
-const floorRepeat = 4; //More/less reps
+floorTexture.wrapS = THREE.RepeatWrapping;
+floorTexture.wrapT = THREE.RepeatWrapping;
+const floorRepeat = 4;
 floorTexture.repeat.set(floorRepeat, floorRepeat);
 
-
-let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, cameraPosition, controls, renderer;
-
+let camera, menuCamera, current_camera, controls, renderer;
 let quit = false;
 let inMenu = true;
 let staminaSection = document.querySelector('.stamina-section');
@@ -22,36 +21,38 @@ let staminaText = document.querySelector('.stamina-text');
 let staminaContainer = document.querySelector('.stamina-bar');
 let staminaAmt = document.querySelector('.stamina-amt');
 
-//temp
 let orbitCamera;
-
 export let gameScene, player;
-let menuScene, gameOverScene, currentScene, hand, map;
-let entity1, entity1_fov;
+let menuScene, currentScene, map;
+let textGeoA, textMeshA, textGeoB, textMeshB, textGeoC, textMeshC, 
+    textGeo2, textMesh2, textGeo3, textMesh3, textGeo4, textMesh4, 
+    textGeo5, textMesh5, textGeo6, textMesh6, textGeo7, textMesh7, 
+    textGeo8, textMesh8, textGeo9, textMesh9, font;
 
-
-let textGeoA, textMeshA, textGeoB, textMeshB, textGeoC, textMeshC;
-
-let spawnPoint = [];
-let entitySpawn = [];
-
-//temp raycaster 
+let group, textMesh;
+let menuItems = [];
+let inputs = {};
+let keepMoving = true;
+const MAX_MAP_SIZE = 15;
+const MIN_MAP_SIZE = 15;
+const clock = new THREE.Clock();
+const ambientLight = new THREE.AmbientLight(0x505050);
+let vector;
+let win = false;
 let raycaster = new THREE.Raycaster();
 let pointer = new THREE.Vector2();
 
-let group, textMesh, textMesh2, textMesh3, textMesh4, textMesh5, textMesh6, textMesh7, textMesh8, textMesh9, textGeo, textGeo2, textGeo3, textGeo4, textGeo5, textGeo6, textGeo7, textGeo8, textGeo9, font;
-let menuItems = [];
-let inputs = {};
-let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
+let stamina = 100;
+let shift = false;
+let moving = false;
+let isRunning = false;
+let bob = 0;
 
-//mapsize
-const MAX_MAP_SIZE = 30;
-const MIN_MAP_SIZE = 25;
-const clock = new THREE.Clock();//To animate texture
-const ambientLight = new THREE.AmbientLight(0x505050);
+let walkingAudio; // declare here, initialize later
 
-let win = false;
-let vector;
+// Torch state managed in main.js
+export let torchOn = true;
+let torchLight = null; // Will store reference to the flashlight's spotlight
 
 init();
 
@@ -66,21 +67,28 @@ function init() {
     vector = camera.position.clone();
     const listener = new THREE.AudioListener();
     camera.add(listener);
+
+    // Initialize walkingAudio now
+    walkingAudio = new THREE.Audio(listener);
+    const audioLoader2 = new THREE.AudioLoader();
+    audioLoader2.load('/audio/concrete-footsteps.mp3', (buffer) => {
+        walkingAudio.setBuffer(buffer);
+        walkingAudio.setLoop(true);
+        walkingAudio.setVolume(0);
+    });
+
     const backgroundMusic = new THREE.Audio(listener);
     const audioLoader = new THREE.AudioLoader();
     audioLoader.load('/audio/loop_audio.mp3', (buffer) => {
         backgroundMusic.setBuffer(buffer);
         backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(0.2);//Adjust as necessary
-        //backgroundMusic.play();
+        backgroundMusic.setVolume(0.2);
     });
-    //Some broswers block autoplay...
     const startAudio = () => {
         backgroundMusic.play();
         window.removeEventListener('click', startAudio);
         window.removeEventListener('keydown', startAudio);
     };
-
     window.addEventListener('click', startAudio);
     window.addEventListener('keydown', startAudio);
 
@@ -89,14 +97,11 @@ function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    //renderer.setAnimationLoop( animate );
     document.body.appendChild(renderer.domElement);
 
-    //temp
     orbitCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     controls = new OrbitControls(camera, renderer.domElement);
     controls.target.set(0,0,0);
-    //controls.enableKeys = false;
 
     current_camera = menuCamera;
 
@@ -107,14 +112,12 @@ function init() {
     menuScene = new THREE.Scene();
     menuScene.background = new THREE.Color(0x000000);
 
-    //lighting
-
+    // Lighting
     const pointLight = new THREE.PointLight(0xffffff, 100, 100);
     pointLight.position.set(5, 15, 5);
     pointLight.castShadow = true; 
     pointLight.shadow.mapSize.width = 1024; 
     pointLight.shadow.mapSize.height = 1024;
-
     gameScene.add(pointLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
@@ -124,39 +127,25 @@ function init() {
     directionalLight.shadow.mapSize.height = 2048;
     gameScene.add(directionalLight);
 
-    //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
     ambientLight.intensity = 0.25;
     gameScene.add(ambientLight);
-    //Make the room dark
-    //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
-    //Dim directional light to cast minimal ambient lighting
     directionalLight.intensity = 0.03;
-    //Reduce point light's intensity
     pointLight.intensity = 0.05;
 
-    //torchLight.intensity = 1; Moved to makeGameScene
     currentScene = menuScene;
 
-    //spawnPoint = setSpawn();
-    makeGameScene();
-    makeText();
-
-}
-
-function makeGameScene() {
+    // Load Maze
     loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
-    //Player
-    spawnPoint = setSpawn();
+
+    // Player
+    let spawnPoint = setSpawn();
     const playerGeometry = new THREE.SphereGeometry(0.5, 14, 14);
     const playerMaterial = new THREE.MeshStandardMaterial({ color: 0x000fff });
     player = new THREE.Mesh(playerGeometry, playerMaterial);
     player.position.set(spawnPoint.x, 0, spawnPoint.z);
-    console.log(spawnPoint.x, 0, spawnPoint.z);
     gameScene.add(player);
 
-
-    //Flashlight by Robert Ramsay [CC-BY] via Poly Pizza
-    //Can change later if different model preferred 
+    // Flashlight
     const mtlLoader = new MTLLoader();
     mtlLoader.load('./assets/Flashlight/FlashlightAndMat.mtl', (mat) => {
         mat.preload();
@@ -166,15 +155,12 @@ function makeGameScene() {
             flashlight.scale.set(0.031, 0.031, 0.031);
             flashlight.position.set(0.3, -0.2, -0.5);
             camera.add(flashlight);
-            // Create torch
-            const torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
-            //Change the color to dark red (0xff0000) and reduce the intensity to 0.5 for a dimmer effect
-            torchLight.position.set(0, 0, 0.5); // Position it slightly in front of the hand
+            torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
+            torchLight.position.set(0, 0, 0.5); 
             torchLight.target.position.set(0, 0, -1);
             flashlight.add(torchLight);
             flashlight.add(torchLight.target);
-            // Optionally adjust intensity further for desired dimness
-            torchLight.intensity = 0.35; // Make it even dimmer
+            torchLight.intensity = 0.35; 
             torchLight.castShadow = true;
             torchLight.shadow.mapSize.width = 1024; 
             torchLight.shadow.mapSize.height = 1024;
@@ -184,65 +170,26 @@ function makeGameScene() {
             torchLight.shadow.camera.right = 20;
         });
     });
-    /*
-    //Player hand
-    const handGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.5);
-    //TBD : Work on design for hand material
-    const handMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    hand = new THREE.Mesh(handGeometry, handMaterial);
-    hand.position.set(0.3, -0.2, -0.5); // Relative to the camera
-    camera.add(hand); // Fix to player
-    
-    
-    // Create torch
-    const torchLight = new THREE.SpotLight(0xff0000, 1, 50, Math.PI / 4, 0.1, 1); 
-    //Change the color to dark red (0xff0000) and reduce the intensity to 0.5 for a dimmer effect
-    torchLight.position.set(0, 0, 0.5); // Position it slightly in front of the hand
-    torchLight.target.position.set(0, 0, -1);
-    hand.add(torchLight);
-    hand.add(torchLight.target);
-    // Optionally adjust intensity further for desired dimness
-    torchLight.intensity = 0.35; // Make it even dimmer
-    */
     gameScene.add(camera);
 
-    //Create test enemy
-    let entity1_spawn = setSpawn();  // todo steve: expand upon entity spawnpoints and patrolling routes later
-    const entity1_Geometry = new THREE.OctahedronGeometry(1);
-    const entity_Material = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
-    entity1 = new THREE.Mesh(entity1_Geometry, entity_Material);
-    entity1.position.set(entity1_spawn.x, 1, entity1_spawn.z);
-    entity1.castShadow = true;
-    entity1.receiveShadow = true;
-    //gameScene.add(entity1);
-    const entity1_fovGeometry = new THREE.ConeGeometry(2, 8, 8, 1);   // base radius, height, radius segments, height segments
-    const entity1_fovMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0xFFFF80, 
-        transparent: true, 
-        opacity: 0.5,
-        side: THREE.DoubleSide,
-    });
-    entity1_fov = new THREE.Mesh(entity1_fovGeometry, entity1_fovMaterial);
-    entity1_fov.rotation.x = -Math.PI / 2; 
-    entity1_fov.position.set(0, 0, 4);
-    entity1.add(entity1_fov);
-
-    // Create and place entities
-    addEntities();
-
-    // Room
+    // Floor
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2 + 1, map.length * 2 + 1);
     const floorMaterial = new THREE.MeshStandardMaterial({map : floorTexture});
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-
     floor.position.set(0, 0, 0);
     floor.rotation.x = -Math.PI / 2;
-    
     gameScene.add(floor);
-} 
+
+    // Load entity model and then add two entities
+    loadEntityModel().then(() => {
+        addEntities(); 
+    });
+
+    makeText();
+    animate(); // call animate LAST in init()
+}
 
 function makeText() {
-    //lighting
     const menuDirLight = new THREE.DirectionalLight(0xffffff, 1);
     menuDirLight.position.set(0,0,1).normalize();
     menuScene.add(menuDirLight);
@@ -261,12 +208,11 @@ function makeText() {
         font = response;
         createMenuText();
     });
-    
 }
-let modelEntity;
+
 function createMenuText() {
     if (!font) return;
-    textGeo = new TextGeometry('PAUSED ||', {
+    let textGeo = new TextGeometry('PAUSED ||', {
         font: font,
         size: 30,
         depth: 30,
@@ -277,7 +223,7 @@ function createMenuText() {
     });
     textGeo.computeBoundingBox();
     const centerOffset = -0.5 * (textGeo.boundingBox.max.x - textGeo.boundingBox.min.x);
-    textMesh = new THREE.Mesh(textGeo, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
+    let textMesh = new THREE.Mesh(textGeo, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh.position.set(centerOffset, 160, 0);
     textMesh.name = 'PAUSE';
 
@@ -444,10 +390,6 @@ function createMenuText() {
     textMesh9.position.set(centerOffset9, -410, 0);
     textMesh9.name = 'START';
 
-    modelEntity = entity1.clone();
-    modelEntity.position.set(0, -270, 370);
-    menuScene.add(modelEntity);
-
     group.add(textMesh);
     group.add(textMesh2);
     group.add(textMesh3);
@@ -498,16 +440,12 @@ function loadMap(max, min) {
 }
 
 function setSpawn() {
-    //if (!player) {
-    //    return { x: 0, y: 0, z: 0 }; 
-    //} Removed this as it was causing the player to be stuck when the game started
     validSpawnPosition.sort(() => Math.random() - 0.5);
-    let x = validSpawnPosition.at(0)[0];
-    let z = validSpawnPosition.at(0)[1];
-    return { x: x, y: 0, z: z };
+    let coords = validSpawnPosition.at(0);
+    return { x: coords[0], y: 0, z: coords[1] };
 }
 
-export function getTwoValidMazeSpaces() {   // Variation of setSpawn function but for two points
+export function getTwoValidMazeSpaces() {
     validSpawnPosition.sort(() => Math.random() - 0.5);
     let point1 = validSpawnPosition.at(0);
     let point2 = validSpawnPosition.at(1);
@@ -517,17 +455,13 @@ export function getTwoValidMazeSpaces() {   // Variation of setSpawn function bu
     ];
 }
 
-let bob = 0;
-
 function updateCameraPosition() {
-    // Camera offset from player; can adjust if necessary
     const cameraOffset = new THREE.Vector3(0, 1.5, 0);
-    // Apply the player's rotation
     cameraOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
     camera.position.copy(player.position.clone().add(cameraOffset));
-    const lookAtOffset = new THREE.Vector3(0, 1.5, 1); //Where do we look from
+    const lookAtOffset = new THREE.Vector3(0, 1.5, 1);
     lookAtOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
-    camera.lookAt(player.position.clone().add(lookAtOffset));//Look from offset
+    camera.lookAt(player.position.clone().add(lookAtOffset));
     let oscillation = 15;
     let range = 0.05;
     if (moving) {
@@ -541,48 +475,44 @@ function updateCameraPosition() {
 }
 
 function isPositionValid(x, z) {
-    const playerRadius = 0.20; // Increase/Decrease this value to fix too many/too few collisions
+    const playerRadius = 0.20;
     const playerPosition = new THREE.Vector3(x, player.position.y, z);
-
     const playerSphere = new THREE.Sphere(playerPosition, playerRadius);
 
     for (let i = 0; i < wallBoundingBoxes.length; i++) {
         const wallBox = wallBoundingBoxes[i];
-        if (wallBox.intersectsSphere(playerSphere)) {//Use this built in func. to simplify check
-            // Collision detected
+        if (wallBox.intersectsSphere(playerSphere)) {
             return false;
         }
     }
     return true;
 }
 
-
-let stamina = 100;
-
-let shift = false;
-let moving = false;
 window.addEventListener('keydown', function(event) {
-    //console.log('Key pressed:', event.key); // For debugging
     if (event.shiftKey) shift = true;
     inputs[event.key] = true;
+
+    // Toggle torch on space press
+    if (event.code === 'Space') {
+        torchOn = !torchOn;
+        if (torchLight) {
+            torchLight.intensity = torchOn ? 0.35 : 0.0;
+        }
+    }
+
     switch (event.key) {
         case 'k':
             gameScene.fog = new THREE.Fog(0x000000, 500, 1300);
             ambientLight.intensity = 10;
             keepMoving = false;
-            //Currently in order to view the map after pressing k we will increase the ambient light and stop the walls from moving
-            //This requires the player to press "Escape" to return to normal setting. Not a great solution, should be fixed.
             current_camera = orbitCamera;
             current_camera.position.set(0, 63, 0);
             current_camera.lookAt(0, 0, 0);
             controls.object = current_camera;
             break;
         case 'Escape':
-            if (inMenu) {
-                break;
-            } 
-            keepMoving = true;//Resetting;
-            player.y = 14;
+            if (inMenu) break;
+            keepMoving = true;
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
             menuCamera.layers.enable(1);
             if (currentScene === gameScene) {
@@ -600,7 +530,7 @@ window.addEventListener('keydown', function(event) {
                 staminaAmt.id = '';
             }
             break;
-        }
+    }
 });
 
 window.addEventListener('keyup', (event) => {
@@ -609,7 +539,6 @@ window.addEventListener('keyup', (event) => {
     moving = false;
 });
 
-let isRunning = false;
 function playerMovement(key) {
     moving = true;
     const walkSpeed = 0.05;
@@ -630,70 +559,58 @@ function playerMovement(key) {
     if (isRunning && stamina > 0) {
         speed += 0.05;
     }
-    //Compute the delta of players distance traversed 
+
     let deltaX = 0;
     let deltaZ = 0;
     switch (key) {
-        case 'w': // Forward
+        case 'w':
         case 'ArrowUp':
             deltaX += Math.sin(player.rotation.y) * speed;
             deltaZ += Math.cos(player.rotation.y) * speed;
             break;
-        case 's': // Backward
+        case 's':
         case 'ArrowDown':
             deltaX -= Math.sin(player.rotation.y) * speed;
             deltaZ -= Math.cos(player.rotation.y) * speed;
             break;
-        case 'a': // Left
+        case 'a':
         case 'ArrowLeft':
             deltaX += Math.cos(player.rotation.y) * speed;
             deltaZ -= Math.sin(player.rotation.y) * speed;
             break;
-        case 'd': // Right
+        case 'd':
         case 'ArrowRight':
             deltaX -= Math.cos(player.rotation.y) * speed;
             deltaZ += Math.sin(player.rotation.y) * speed;
             break;
     }
-    // Movement vector
-   let movementVector = new THREE.Vector3(deltaX, 0, deltaZ);
 
-   // Break your movement into 1000 steps and check if a collision occured; needed to stop the player if moving too fast
+   let movementVector = new THREE.Vector3(deltaX, 0, deltaZ);
    let steps = 1000;
    let stepVector = movementVector.clone().divideScalar(steps);
-
-   // Move incrementally
    for (let i = 0; i < steps; i++) {
        let newX = player.position.x + stepVector.x;
        let newZ = player.position.z + stepVector.z;
-
        if (isPositionValid(newX, newZ)) {
            player.position.x = newX;
            player.position.z = newZ;
        } else {
-           // Collision detected, stop movement
            break;
        }
    }
-    // Update camera and other necessary components
     updateCameraPosition();
 }
 
-//Handle rotation with left click
 let isLeftClickHeld = false;
-let previousMouseX = null;
 let mesh = null;
-// Deact Orbitcontrols when left clicked
+
 window.addEventListener('mousedown', (event) => {
     if (event.button === 0) {
         isLeftClickHeld = true;
-        previousMouseX = event.clientX;
-        controls.enabled = false; // Disable
+        controls.enabled = false; 
     }
-    //Set x and y coordinates of the mouse
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    //set the position of the ray
     raycaster.setFromCamera(pointer, current_camera);
     if (currentScene === menuScene) {
         raycaster.layers.set(1); 
@@ -711,30 +628,18 @@ window.addEventListener('mousedown', (event) => {
 window.addEventListener('mouseup', (event) => {
     if (event.button === 0) {
         isLeftClickHeld = false;
-        previousMouseX = null;
-        controls.enabled = true; // Re-enable
+        controls.enabled = true;
     }
 });
 window.addEventListener('mousemove', (event) => {
     if (document.pointerLockElement === renderer.domElement) {
-        /*
-        const deltaX = event.clientX - previousMouseX;
         const rotationSpeed = 0.005;
-        // Rotate the player around its y-axis (YAW Rotation; )
-        player.rotation.y -= deltaX * rotationSpeed;
-        previousMouseX = event.clientX;
-        */
-        const rotationSpeed = 0.005;
-        // Rotate the player around its y-axis (YAW Rotation; )
         player.rotation.y -= event.movementX * rotationSpeed;
-        //previousMouseX = event.clientX;
     }
 });
 window.addEventListener('click', (event) => {
-    //Set x and y coordinates of the mouse
     pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    //set the position of the ray
     raycaster.setFromCamera(pointer, current_camera);
     if (currentScene === menuScene) {
         raycaster.layers.set(1); 
@@ -751,28 +656,21 @@ window.addEventListener('click', (event) => {
                 break;
             case 'NEWMAP':
                 loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
-                //rand spawn
-                spawnPoint = setSpawn();
+                let spawnPoint = setSpawn();
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
-                entitySpawn = setSpawn();
-                entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
                 resetGame();
-                //reset game logic function
                 break;
             case 'RETRY':
             case 'RESTART':
-                player.position.set(spawnPoint.x, 0, spawnPoint.z);
+                let sp = setSpawn();
+                player.position.set(sp.x, 0, sp.z);
                 resetGame();
-                //same map
-                //reset entity logic fn
                 break;
             case 'START':
                 if (quit) {
                     loadMap(MAX_MAP_SIZE, MIN_MAP_SIZE);
-                    spawnPoint = setSpawn();
-                    player.position.set(spawnPoint.x, 0, spawnPoint.z);
-                    entitySpawn = setSpawn();
-                    entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
+                    let spt = setSpawn();
+                    player.position.set(spt.x, 0, spt.z);
                     renderer.domElement.requestPointerLock();
                 }
                 resetGame();
@@ -822,35 +720,17 @@ function checkWin() {
         moving = false;
         walkingAudio.setVolume(0);
     } 
-    //need to track position of entity
-    //Losing condition: Entity coords === player coords
-    for (let entity of entityList) {
 
+    for (let entity of entityList) {
         let playerPosition = player.position;
         let entityPosition = entity.mesh.position;
         const directionToPlayer = new THREE.Vector3(
             playerPosition.x - entityPosition.x,
-            0, // Ignore y-coordinate
+            0,
             playerPosition.z - entityPosition.z
         );
-    
-        // Check if the player is within the cone's height
         const distanceToPlayer = directionToPlayer.length();
-        if (!(inMenu) && distanceToPlayer < 0.3) {
-            /* For if we want a jumpscare, otherwise commented out for now
-            setTimeout(() => {
-                currentScene = menuScene;
-                current_camera = menuCamera;
-                menuCamera.position.set(0, -55, 400);
-                player.position.set(player.position.x - 5, 0, player.position.z - 5);
-                inMenu = true;
-                staminaSection.id = '';
-                staminaText.id = '';
-                staminaContainer.id = '';
-                staminaAmt.id = '';
-            }, 3000);
-            */
-
+        if (!inMenu && distanceToPlayer < 0.3) {
             currentScene = menuScene;
             current_camera = menuCamera;
             menuCamera.position.set(0, -55, 400);
@@ -866,32 +746,15 @@ function checkWin() {
     }
 }
 
-const l = new THREE.AudioListener();
-camera.add(l);
-const walkingAudio = new THREE.Audio(l);
-const audioLoader = new THREE.AudioLoader();
-audioLoader.load('/audio/concrete-footsteps.mp3', (buffer) => {
-    walkingAudio.setBuffer(buffer);
-    walkingAudio.setLoop(true);
-    walkingAudio.setVolume(0);
-});
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
     checkWin();
     updateEntityFov();
-    // Move camera to follow the player's position
-    // Animate the texture for a tremor effect
     const elapsedTime = clock.getElapsedTime();
     updateEntities(elapsedTime);
-    // Animate floor/wall
 
-    if (modelEntity) {
-        modelEntity.rotation.y += 0.01;
-    }
-
-    if(keepMoving)
-    {
+    if (keepMoving) {
         texture.offset.x = Math.sin(elapsedTime * 0.5) * 2;
         texture.offset.y = Math.cos(elapsedTime * 0.5) * 2;
         floorTexture.offset.x = -Math.sin(elapsedTime * 0.5) * 2;
@@ -916,6 +779,7 @@ function animate() {
         stamina = stamina > 100 ? 100 : stamina + 0.05;
         staminaAmt.style.width = `${(stamina/100) * 100}%`;
     }
+
     if (moving && shift && stamina > 0) {
         if (!walkingAudio.isPlaying) {
             walkingAudio.play();
@@ -932,8 +796,6 @@ function animate() {
         }
         walkingAudio.setPlaybackRate(1.0);
     }
-    updateEntities(elapsedTime);
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
-animate();

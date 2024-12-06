@@ -1,0 +1,54 @@
+# Blender MTL File: 'monster insects.blend'
+# Material Count: 4
+
+newmtl Material.002
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.008436 0.000000 0.000394
+Ks 0.500000 0.500000 0.500000
+Ke 50.515872 0.000000 0.592473
+Ni 1.450000
+d 1.000000
+illum 2
+
+newmtl monster-body
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.000000 0.007420
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump texures\\monster-body_Normal.png
+map_Kd texures\\monster-body_BaseColor.png
+map_Ns texures\\monster-body_Roughness.png
+refl texures\\monster-body_Metallic.png
+
+newmtl spikes
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.281007 0.241751 0.265471
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump текструра 2\\spikes_Normal.png
+map_Kd текструра 2\\spikes_BaseColor.png
+map_Ns текструра 2\\spikes_Roughness.png
+refl текструра 2\\spikes_Metallic.png
+
+newmtl teeth
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Bump Нова папка\\teeth_Normal.png
+map_Kd Нова папка\\teeth_BaseColor.png
+map_Ns Нова папка\\teeth_Roughness.png
+refl Нова папка\\teeth_Metallic.png
