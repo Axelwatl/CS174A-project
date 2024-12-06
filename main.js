@@ -564,7 +564,7 @@ let moving = false;
 window.addEventListener('keydown', function(event) {
     //console.log('Key pressed:', event.key); // For debugging
     if (event.shiftKey) shift = true;
-    inputs[event.key] = true;
+    inputs[event.key.toLowerCase()] = true;
     switch (event.key) {
         case 'k':
             gameScene.fog = new THREE.Fog(0x000000, 500, 1300);
@@ -604,7 +604,7 @@ window.addEventListener('keydown', function(event) {
 });
 
 window.addEventListener('keyup', (event) => {
-    inputs[event.key] = false;
+    inputs[event.key.toLowerCase()] = false;
     shift = false;
     moving = false;
 });
@@ -932,7 +932,7 @@ function animate() {
         }
         walkingAudio.setPlaybackRate(1.0);
     }
-    updateEntities(elapsedTime);
+    
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
