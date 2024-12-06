@@ -5,6 +5,7 @@ export let exitCoords;
 export let losingCoordsTEMP;
 export let validSpawnPosition = [];
 export let wallBoundingBoxes = []; // Store wall bounding boxes
+export let wallMeshes = [];
 export let collisionScale = 0.95; // From 0 -> 1
 export const texture = new THREE.TextureLoader().load('textures/flesh.jpg');
 
@@ -127,6 +128,7 @@ export function genMaze(maze, scene) {
                 );
 
                 wallBoundingBoxes.push(wallBox);//Store all the coordinates in this array
+                wallMeshes.push(wall);
             } else if (row === 0 && col === maze.length - 2) {
                 //then exit position
                 continue;
