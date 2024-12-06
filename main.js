@@ -39,7 +39,7 @@ let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 30;
+const MAX_MAP_SIZE = 25;
 const MIN_MAP_SIZE = 25;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
@@ -81,6 +81,8 @@ function init() {
     renderer = new THREE.WebGLRenderer({antialias: true});
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     //renderer.setAnimationLoop( animate );
     document.body.appendChild(renderer.domElement);
 
@@ -102,11 +104,18 @@ function init() {
     //lighting
 
     const pointLight = new THREE.PointLight(0xffffff, 100, 100);
-    pointLight.position.set(5, 15, 5); // Position the light
+    pointLight.position.set(5, 15, 5);
+    pointLight.castShadow = true; 
+    pointLight.shadow.mapSize.width = 1024; 
+    pointLight.shadow.mapSize.height = 1024;
+
     gameScene.add(pointLight);
 
     const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
     directionalLight.position.set(0.5, .0, 1.0).normalize();
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048; 
+    directionalLight.shadow.mapSize.height = 2048;
     gameScene.add(directionalLight);
 
     //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
@@ -115,9 +124,9 @@ function init() {
     //Make the room dark
     //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
     //Dim directional light to cast minimal ambient lighting
-    directionalLight.intensity = 0.02;
+    directionalLight.intensity = 0.03;
     //Reduce point light's intensity
-    pointLight.intensity = 0.3;
+    pointLight.intensity = 0.05;
 
     //torchLight.intensity = 1; Moved to makeGameScene
     currentScene = menuScene;
@@ -160,6 +169,13 @@ function makeGameScene() {
             flashlight.add(torchLight.target);
             // Optionally adjust intensity further for desired dimness
             torchLight.intensity = 0.35; // Make it even dimmer
+            torchLight.castShadow = true;
+            torchLight.shadow.mapSize.width = 1024; 
+            torchLight.shadow.mapSize.height = 1024;
+            torchLight.shadow.camera.near = 0.5;
+            torchLight.shadow.camera.far = 30;
+            torchLight.shadow.camera.left = -20;
+            torchLight.shadow.camera.right = 20;
         });
     });
     /*
@@ -190,6 +206,8 @@ function makeGameScene() {
     const entity_Material = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
     entity1 = new THREE.Mesh(entity1_Geometry, entity_Material);
     entity1.position.set(entity1_spawn.x, 1, entity1_spawn.z);
+    entity1.castShadow = true;
+    entity1.receiveShadow = true;
     gameScene.add(entity1);
     const entity1_fovGeometry = new THREE.ConeGeometry(2, 8, 8, 1);   // base radius, height, radius segments, height segments
     const entity1_fovMaterial = new THREE.MeshStandardMaterial({ 
