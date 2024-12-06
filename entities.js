@@ -139,41 +139,35 @@ function createFovCone() {
 
 export function updateEntities(time) {
     for (let entity of entityList) {
-        // If detected, entity rushes the player
         if (entity.detected) {
-            // Rush speed, faster than normal
             let rushSpeed = ENTITY_SPEED * 2.0;
-
-            // Move directly toward the player
             let playerPosition = player.position.clone();
             let entityPosition = entity.mesh.position.clone();
             let directionToPlayer = playerPosition.sub(entityPosition).normalize();
-            directionToPlayer.multiplyScalar(rushSpeed * 0.01); // Move in small increments
+            directionToPlayer.multiplyScalar(rushSpeed * 0.01);
             entity.mesh.position.add(directionToPlayer);
 
-            // Check if entity reached player
             const distanceToPlayer = entity.mesh.position.distanceTo(player.position);
+
+            // Handle player collision
             if (distanceToPlayer < 0.3) {
-                // If torchOn and entity reaches player, player dies -> game ends
                 if (torchOn) {
-                    console.log("The entity caught you with torch ON! Game Over!");
-                    // Simulate game end: reposition player to some place
-                    player.position.set(player.position.x - 5, 0, player.position.z - 5);
-                    // You could set a global variable or call a reset function here
+                    // Game Over if torch is ON
+                    console.log("The entity caught you with the torch ON! Game Over!");
+                    gameEnd(); // Transition to game end screen
                 } else {
-                    // Torch off: entity resets to its spawn point
-                    console.log("Entity reached player but torch was OFF, entity resets.");
+                    // Reset the entity if the torch is OFF
+                    console.log("Entity reached the player but torch was OFF, entity resets.");
                     entity.mesh.position.set(entity.spawnPoint.x, entity.spawnPoint.y + 0.5, entity.spawnPoint.z);
                     entity.detected = false;
                 }
             }
         } else {
-            // Normal patrol behavior
             let period = entity.routeLength / ENTITY_SPEED;
             let a = (time % period) / period;
             if (a > 0.5) {
                 a = 1 - a;
-                entity.mesh.lookAt(entity.spawnPoint.x, entity.mesh.position.y, entity.spawnPoint.z);
+                entity.mesh.lookAt(entity.spawnPoint.x, entity.mesh.position.y, entity.mesh.position.z);
             } else {
                 entity.mesh.lookAt(entity.patrolPoint.x, entity.mesh.position.y, entity.mesh.position.z);
             }
@@ -182,6 +176,39 @@ export function updateEntities(time) {
         }
     }
 }
+
+// Function to handle game end screen
+function gameEnd() {
+    console.log("Game Over! Transitioning to end screen...");
+    
+    // Remove entities from the scene
+    entityList.forEach(entity => gameScene.remove(entity.mesh));
+    entityList = [];
+
+    // Display game over screen (this could be HTML, a canvas overlay, etc.)
+    const gameOverScreen = document.createElement('div');
+    gameOverScreen.style.position = 'fixed'; // Make it fixed to cover the whole screen
+    gameOverScreen.style.top = '0';
+    gameOverScreen.style.left = '0';
+    gameOverScreen.style.width = '100vw'; // Full viewport width
+    gameOverScreen.style.height = '100vh'; // Full viewport height
+    gameOverScreen.style.fontSize = '3em';
+    gameOverScreen.style.color = 'white';
+    gameOverScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.9)'; // Slight transparency
+    gameOverScreen.style.display = 'flex';
+    gameOverScreen.style.justifyContent = 'center';
+    gameOverScreen.style.alignItems = 'center';
+    gameOverScreen.style.zIndex = '1000'; // Ensure it's on top of everything
+    gameOverScreen.innerHTML = 'Game Over!';
+    document.body.appendChild(gameOverScreen);
+
+    // Optionally restart or reload the game after some time
+    setTimeout(() => {
+        window.location.reload(); // Reload the game after 5 seconds
+    }, 5000);
+}
+
+
 
 export function isPlayerInFov(playerPosition, entity, cone) {
     const coneHeight = cone.geometry.parameters.height;

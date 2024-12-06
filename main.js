@@ -33,8 +33,8 @@ let group, textMesh;
 let menuItems = [];
 let inputs = {};
 let keepMoving = true;
-const MAX_MAP_SIZE = 15;
-const MIN_MAP_SIZE = 15;
+const MAX_MAP_SIZE = 12;
+const MIN_MAP_SIZE = 12;
 const clock = new THREE.Clock();
 const ambientLight = new THREE.AmbientLight(0x505050);
 let vector;
@@ -127,7 +127,7 @@ function init() {
     directionalLight.shadow.mapSize.height = 2048;
     gameScene.add(directionalLight);
 
-    ambientLight.intensity = 0.25;
+    ambientLight.intensity = 0.01;
     gameScene.add(ambientLight);
     directionalLight.intensity = 0.03;
     pointLight.intensity = 0.05;
@@ -160,7 +160,7 @@ function init() {
             torchLight.target.position.set(0, 0, -1);
             flashlight.add(torchLight);
             flashlight.add(torchLight.target);
-            torchLight.intensity = 0.35; 
+            torchLight.intensity = 1; 
             torchLight.castShadow = true;
             torchLight.shadow.mapSize.width = 1024; 
             torchLight.shadow.mapSize.height = 1024;
@@ -721,6 +721,7 @@ function checkWin() {
         walkingAudio.setVolume(0);
     } 
 
+    /**
     for (let entity of entityList) {
         let playerPosition = player.position;
         let entityPosition = entity.mesh.position;
@@ -743,7 +744,7 @@ function checkWin() {
             document.exitPointerLock();
             walkingAudio.setVolume(0);
         }
-    }
+    }*/
 }
 
 function animate() {
@@ -757,7 +758,7 @@ function animate() {
     if (keepMoving) {
         texture.offset.x = Math.sin(elapsedTime * 0.5) * 2;
         texture.offset.y = Math.cos(elapsedTime * 0.5) * 2;
-        floorTexture.offset.x = -Math.sin(elapsedTime * 0.5) * 2;
+        floorTexture.offset.x = -Math.sin(elapsedTime * 0.05) * 2;
         floorTexture.offset.z = Math.sin(elapsedTime * 0.5) * 2;
     }
 
