@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls  } from 'three/examples/jsm/controls/OrbitControls.js';
 import { FontLoader } from 'three/examples/jsm/Addons.js';
 import { TextGeometry } from 'three/examples/jsm/Addons.js';
-import { genMaze, exitCoords, losingCoordsTEMP, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
+import { genMaze, exitCoords, validSpawnPosition, wallBoundingBoxes, texture } from './maze.js';
 import { OBJLoader } from 'three/examples/jsm/Addons.js';
 import { MTLLoader } from 'three/examples/jsm/Addons.js';
 import { entityList, addEntities, updateEntities, isPlayerInFov, updateEntityFov } from './entities.js';
@@ -27,7 +27,7 @@ let orbitCamera;
 
 export let gameScene, player;
 let menuScene, gameOverScene, currentScene, hand, map;
-let entity1, entity1_fov, entity1_detected;    // todo steve: temporary until I formalize what I want to do with these
+let entity1, entity1_fov;
 
 
 let textGeoA, textMeshA, textGeoB, textMeshB, textGeoC, textMeshC;
@@ -45,8 +45,8 @@ let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 30;    // originally 30
-const MIN_MAP_SIZE = 25;    // originally 25
+const MAX_MAP_SIZE = 30;
+const MIN_MAP_SIZE = 25;
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -803,7 +803,6 @@ function resetGame() {
     staminaAmt.id = 'stamina';
 }
 
-console.log('losing coords' + losingCoordsTEMP.x + ',' + losingCoordsTEMP.z);
 console.log(exitCoords.x + ',' + exitCoords.z);
 
 function checkWin() {
@@ -825,10 +824,33 @@ function checkWin() {
     } 
     //need to track position of entity
     //Losing condition: Entity coords === player coords
-    let distanceFromEntity = Math.sqrt(Math.pow(entity1.position.x - vector.x, 2) + Math.pow(entity1.position.z - vector.z, 2));
-    if (distanceFromEntity < 0.5) {
-        /* For if we want a jumpscare, otherwise commented out for now
-        setTimeout(() => {
+    for (let entity of entityList) {
+
+        let playerPosition = player.position;
+        let entityPosition = entity.mesh.position;
+        const directionToPlayer = new THREE.Vector3(
+            playerPosition.x - entityPosition.x,
+            0, // Ignore y-coordinate
+            playerPosition.z - entityPosition.z
+        );
+    
+        // Check if the player is within the cone's height
+        const distanceToPlayer = directionToPlayer.length();
+        if (!(inMenu) && distanceToPlayer < 0.3) {
+            /* For if we want a jumpscare, otherwise commented out for now
+            setTimeout(() => {
+                currentScene = menuScene;
+                current_camera = menuCamera;
+                menuCamera.position.set(0, -55, 400);
+                player.position.set(player.position.x - 5, 0, player.position.z - 5);
+                inMenu = true;
+                staminaSection.id = '';
+                staminaText.id = '';
+                staminaContainer.id = '';
+                staminaAmt.id = '';
+            }, 3000);
+            */
+
             currentScene = menuScene;
             current_camera = menuCamera;
             menuCamera.position.set(0, -55, 400);
@@ -838,19 +860,9 @@ function checkWin() {
             staminaText.id = '';
             staminaContainer.id = '';
             staminaAmt.id = '';
-        }, 3000);
-        */
-        currentScene = menuScene;
-        current_camera = menuCamera;
-        menuCamera.position.set(0, -55, 400);
-        player.position.set(player.position.x - 5, 0, player.position.z - 5);
-        inMenu = true;
-        staminaSection.id = '';
-        staminaText.id = '';
-        staminaContainer.id = '';
-        staminaAmt.id = '';
-        document.exitPointerLock();
-        walkingAudio.setVolume(0);
+            document.exitPointerLock();
+            walkingAudio.setVolume(0);
+        }
     }
 }
 

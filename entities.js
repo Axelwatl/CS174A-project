@@ -52,6 +52,7 @@ export function addEntities(){
             patrolPoint: patrolPoint,
             routeVector: directionToPatrolPoint,
             routeLength: routeLength,
+            detected: false,
         }
 
         gameScene.add(entity.mesh);
@@ -62,19 +63,26 @@ export function addEntities(){
 
 export function updateEntities(time){
     for(let entity of entityList) {
-        // Linear interpolation between spawnPoint and patrolPoint
-        let period = entity.routeLength / ENTITY_SPEED;
-        let a = (time % period) / period;
-        if (a > 0.5) {
-            a = 1 - a;
-            entity.mesh.lookAt(entity.spawnPoint.x, entity.mesh.position.y, entity.spawnPoint.z);
+        if (entity.detected) {
+            // Player was seen; make entity chase player
+            //entity.mesh.
+            console.log("t");
         }
         else {
-            entity.mesh.lookAt(entity.patrolPoint.x, entity.mesh.position.y, entity.patrolPoint.z);
-        }
-        a *= 2;
+            // Linear interpolation between spawnPoint and patrolPoint
+            let period = entity.routeLength / ENTITY_SPEED;
+            let a = (time % period) / period;
+            if (a > 0.5) {
+                a = 1 - a;
+                entity.mesh.lookAt(entity.spawnPoint.x, entity.mesh.position.y, entity.spawnPoint.z);
+            }
+            else {
+                entity.mesh.lookAt(entity.patrolPoint.x, entity.mesh.position.y, entity.patrolPoint.z);
+            }
+            a *= 2;
 
-        entity.mesh.position.lerpVectors(entity.spawnPoint, entity.patrolPoint, a);
+            entity.mesh.position.lerpVectors(entity.spawnPoint, entity.patrolPoint, a);
+        } 
     }
 }
 
@@ -98,6 +106,11 @@ export function isPlayerInFov(playerPosition, entity, cone) {
     const distanceToPlayer = directionToPlayer.length();
     if (distanceToPlayer > coneHeight) {
         return false; // Player is too far away
+    }
+
+    // If player is very close to the entity, consider that as a detection
+    if (distanceToPlayer < 2) {
+        return true;
     }
 
     // Check angle between entity's forward direction and the direction to the player
@@ -124,6 +137,13 @@ export function isPlayerInFov(playerPosition, entity, cone) {
         return false; // Player is obstructed by a wall
     }
 
+    // Check if entity is inside a wall
+    for (let box of wallBoundingBoxes) {
+        if (box.containsPoint(entity.position)) {
+            return false; // Entity is in a wall
+        }
+    }
+
     // If no intersection and player is in FOV, return true
     return true;
 }
@@ -135,6 +155,7 @@ export function updateEntityFov() {
     for (let entity of entityList) {
         if (isPlayerInFov(playerPosition, entity.mesh, entity.fovMesh)) {
             entity.fovMesh.material.color.set(0xFF8080);   // red
+            entity.detected = true;
         }
         else {
             entity.fovMesh.material.color.set(0xFFFF80);   // yellow

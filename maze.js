@@ -60,8 +60,6 @@ export function genMaze(maze, scene) {
     maze[0][maze.length - 2] = 0;
     // Exit coordinates
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
-    // Temporary losing coordinates
-    losingCoordsTEMP = new THREE.Vector3((maze.length - 5) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
 
     carvePassages(1, 1, maze);
    // addFloorTiles(maze, scene, 'assets/Floor_Tile.glb', maze.length);
