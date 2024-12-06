@@ -5,9 +5,56 @@
 		<title>game</title>
 		<style>
 			body { margin: 0; }
+			#stamina-show {
+				display: flex;
+				align-items: center;
+				position: fixed;
+				bottom: 7.5%;
+				left: 50%;
+				transform: translateX(-50%);
+			}
+			@font-face {
+				font-family: 'PixelifySans';
+				src: url('fonts/PixelifySans.ttf');
+			}
+			#stamina-text-show {
+				color: white;
+				margin-right: 10px;
+				font-size: 20px;
+				font-weight: bold;
+				font-family: 'PixelifySans'; 
+			}
+			#stamina-container {
+                width: 400px;    
+                height: 30px;    
+                background: #333; 
+                border: 2px solid #000;
+                border-radius: 4px;
+            }
+            #stamina {
+                height: 100%;
+                width: 100%; 
+                background: linear-gradient(to right, #ffffff, #ffffff);
+                transition: width 0.1s linear; 
+				background-color: transparent;
+				opacity: 0.5;
+            }
+			.stamina-text::before {
+				content: '';
+			}
+			#stamina-show .stamina-text::before {
+				content: 'STAMINA';
+			}
 		</style>
 	</head>
 	<body>
+		<div class="stamina-section"> 
+			<div class="stamina-text"></div>
+			<div class="stamina-bar">
+				<div class="stamina-amt"></div>
+			</div>
+		</div>
+
 		<script type="module" src="/main.js"></script>
 	</body>
 </html>

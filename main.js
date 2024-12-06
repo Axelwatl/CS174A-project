@@ -17,6 +17,10 @@ let camera, menuCamera, gameOverCamera, current_camera, menuCameraTarget, camera
 
 let quit = false;
 let inMenu = true;
+let staminaSection = document.querySelector('.stamina-section');
+let staminaText = document.querySelector('.stamina-text');
+let staminaContainer = document.querySelector('.stamina-bar');
+let staminaAmt = document.querySelector('.stamina-amt');
 
 //temp
 let orbitCamera;
@@ -41,8 +45,8 @@ let inputs = {};
 let keepMoving = true;//The walls and floor should keep moving unless k was pressed.
 
 //mapsize
-const MAX_MAP_SIZE = 25;
-const MIN_MAP_SIZE = 25;
+const MAX_MAP_SIZE = 30;    // originally 30
+const MIN_MAP_SIZE = 25;    // originally 25
 const clock = new THREE.Clock();//To animate texture
 const ambientLight = new THREE.AmbientLight(0x505050);
 
@@ -67,7 +71,7 @@ function init() {
     audioLoader.load('/audio/loop_audio.mp3', (buffer) => {
         backgroundMusic.setBuffer(buffer);
         backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(1);//Adjust as necessary
+        backgroundMusic.setVolume(0.2);//Adjust as necessary
         //backgroundMusic.play();
     });
     //Some broswers block autoplay...
@@ -121,7 +125,7 @@ function init() {
     gameScene.add(directionalLight);
 
     //const ambientLight = new THREE.AmbientLight(0x505050);  // Soft white light
-    ambientLight.intensity = 0.4;
+    ambientLight.intensity = 0.25;
     gameScene.add(ambientLight);
     //Make the room dark
     //ambientLight.intensity = 10;  // originally 0.01, change after demo or after better fine-tuning
@@ -513,6 +517,8 @@ export function getTwoValidMazeSpaces() {   // Variation of setSpawn function bu
     ];
 }
 
+let bob = 0;
+
 function updateCameraPosition() {
     // Camera offset from player; can adjust if necessary
     const cameraOffset = new THREE.Vector3(0, 1.5, 0);
@@ -522,6 +528,16 @@ function updateCameraPosition() {
     const lookAtOffset = new THREE.Vector3(0, 1.5, 1); //Where do we look from
     lookAtOffset.applyAxisAngle(new THREE.Vector3(0,1,0), player.rotation.y);
     camera.lookAt(player.position.clone().add(lookAtOffset));//Look from offset
+    let oscillation = 15;
+    let range = 0.05;
+    if (moving) {
+        bob += 0.003;
+        let bobbing = Math.sin(bob * oscillation) * range;
+        camera.position.y = player.position.y + 1.5 + bobbing;
+    } else {
+        camera.position.y = player.position.y + 1.5;
+        bob = 0;
+    }
 }
 
 function isPositionValid(x, z) {
@@ -540,7 +556,11 @@ function isPositionValid(x, z) {
     return true;
 }
 
+
+let stamina = 100;
+
 let shift = false;
+let moving = false;
 window.addEventListener('keydown', function(event) {
     //console.log('Key pressed:', event.key); // For debugging
     if (event.shiftKey) shift = true;
@@ -561,16 +581,23 @@ window.addEventListener('keydown', function(event) {
             if (inMenu) {
                 break;
             } 
-            ambientLight.intensity = 0.6;
             keepMoving = true;//Resetting;
             player.y = 14;
             currentScene = (currentScene === gameScene) ? menuScene : gameScene;
             menuCamera.layers.enable(1);
             if (currentScene === gameScene) {
                 current_camera = camera;
+                staminaSection.id = 'stamina-show';
+                staminaText.id = 'stamina-text-show';
+                staminaContainer.id = 'stamina-container'
+                staminaAmt.id = 'stamina';
             } else {
                 menuCamera.position.set(0, 145, 400);
                 current_camera = menuCamera;
+                staminaSection.id = '';
+                staminaText.id = '';
+                staminaContainer.id = '';
+                staminaAmt.id = '';
             }
             break;
         }
@@ -579,20 +606,36 @@ window.addEventListener('keydown', function(event) {
 window.addEventListener('keyup', (event) => {
     inputs[event.key] = false;
     shift = false;
+    moving = false;
 });
 
+let isRunning = false;
 function playerMovement(key) {
-    const speed = 0.05;
+    moving = true;
+    const walkSpeed = 0.05;
+    if (shift && stamina > 0 && !inMenu) {
+        isRunning = true;
+        staminaSection.id = 'stamina-show';
+        staminaText.id = 'stamina-text-show';
+        staminaContainer.id = 'stamina-container'
+        staminaAmt.id = 'stamina';
+        stamina = stamina < 0 ? 0 : stamina - 0.05;
+        staminaAmt.style.width = `${(stamina/100) * 100}%`;
+    } else {
+        isRunning = false;
+        stamina = stamina > 100 ? 100 : stamina + 0.05;
+        staminaAmt.style.width = `${(stamina/100) * 100}%`;
+    }
+    let speed = walkSpeed;
+    if (isRunning && stamina > 0) {
+        speed += 0.05;
+    }
     //Compute the delta of players distance traversed 
     let deltaX = 0;
     let deltaZ = 0;
     switch (key) {
         case 'w': // Forward
         case 'ArrowUp':
-            if (shift) {
-                deltaX += Math.sin(player.rotation.y) * (speed + 0.0026);
-                deltaZ += Math.cos(player.rotation.y) * (speed + 0.0026);
-            }
             deltaX += Math.sin(player.rotation.y) * speed;
             deltaZ += Math.cos(player.rotation.y) * speed;
             break;
@@ -713,17 +756,13 @@ window.addEventListener('click', (event) => {
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
                 entitySpawn = setSpawn();
                 entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
-                inMenu = false;
-                current_camera = camera;
-                currentScene = gameScene;
+                resetGame();
                 //reset game logic function
                 break;
             case 'RETRY':
             case 'RESTART':
                 player.position.set(spawnPoint.x, 0, spawnPoint.z);
-                current_camera = camera;
-                currentScene = gameScene;
-                inMenu = false;
+                resetGame();
                 //same map
                 //reset entity logic fn
                 break;
@@ -736,10 +775,8 @@ window.addEventListener('click', (event) => {
                     entity1.position.set(entitySpawn.x, 1, entitySpawn.z);
                     renderer.domElement.requestPointerLock();
                 }
+                resetGame();
                 quit = false;
-                inMenu = false;
-                current_camera = camera;
-                currentScene = gameScene;
                 break;
             case 'QUIT':
                 quit = true;
@@ -754,6 +791,17 @@ window.addEventListener('click', (event) => {
     if (!quit) renderer.domElement.requestPointerLock();
 });
 
+function resetGame() {
+    walkingAudio.setVolume(1);
+    inMenu = false;
+    current_camera = camera;
+    currentScene = gameScene;
+    stamina = 100;
+    staminaSection.id = 'stamina-show';
+    staminaText.id = 'stamina-text-show';
+    staminaContainer.id = 'stamina-container'
+    staminaAmt.id = 'stamina';
+}
 
 console.log('losing coords' + losingCoordsTEMP.x + ',' + losingCoordsTEMP.z);
 console.log(exitCoords.x + ',' + exitCoords.z);
@@ -767,23 +815,54 @@ function checkWin() {
         menuCamera.position.set(0, 385, 400);
         player.position.set(player.position.x - 5, 0, player.position.z - 5);
         inMenu = true;
+        staminaSection.id = '';
+        staminaText.id = '';
+        staminaContainer.id = '';
+        staminaAmt.id = '';
         document.exitPointerLock();
+        moving = false;
+        walkingAudio.setVolume(0);
     } 
     //need to track position of entity
-    //Temporary; checking for loss menu
     //Losing condition: Entity coords === player coords
-    //Can use .intersectsSphere here for ease
-    let distanceFromEntity = Math.sqrt(Math.pow(losingCoordsTEMP.x - losingCoordsTEMP.z, 2) + Math.pow(exitCoords.z - vector.z, 2));
-    if (distanceFromEntity < 0.3) {
+    let distanceFromEntity = Math.sqrt(Math.pow(entity1.position.x - vector.x, 2) + Math.pow(entity1.position.z - vector.z, 2));
+    if (distanceFromEntity < 0.5) {
+        /* For if we want a jumpscare, otherwise commented out for now
+        setTimeout(() => {
+            currentScene = menuScene;
+            current_camera = menuCamera;
+            menuCamera.position.set(0, -55, 400);
+            player.position.set(player.position.x - 5, 0, player.position.z - 5);
+            inMenu = true;
+            staminaSection.id = '';
+            staminaText.id = '';
+            staminaContainer.id = '';
+            staminaAmt.id = '';
+        }, 3000);
+        */
         currentScene = menuScene;
         current_camera = menuCamera;
         menuCamera.position.set(0, -55, 400);
         player.position.set(player.position.x - 5, 0, player.position.z - 5);
         inMenu = true;
+        staminaSection.id = '';
+        staminaText.id = '';
+        staminaContainer.id = '';
+        staminaAmt.id = '';
         document.exitPointerLock();
+        walkingAudio.setVolume(0);
     }
 }
 
+const l = new THREE.AudioListener();
+camera.add(l);
+const walkingAudio = new THREE.Audio(l);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('/audio/concrete-footsteps.mp3', (buffer) => {
+    walkingAudio.setBuffer(buffer);
+    walkingAudio.setLoop(true);
+    walkingAudio.setVolume(0);
+});
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
@@ -807,10 +886,41 @@ function animate() {
         floorTexture.offset.z = Math.sin(elapsedTime * 0.5) * 2;
     }
 
+    if (stamina >= 100) {
+        staminaSection.id = '';
+        staminaText.id = '';
+        staminaContainer.id = '';
+        staminaAmt.id = '';
+    }
+
     Object.keys(inputs).forEach(ip => {
         if (inputs[ip]) 
             playerMovement(ip);
     });
+
+    moving = ['w', 'a', 's', 'd'].some(key => inputs[key]);
+
+    if (!isRunning && !(['w'].some(key => inputs[key]))) {
+        stamina = stamina > 100 ? 100 : stamina + 0.05;
+        staminaAmt.style.width = `${(stamina/100) * 100}%`;
+    }
+    if (moving && shift && stamina > 0) {
+        if (!walkingAudio.isPlaying) {
+            walkingAudio.play();
+        } 
+        walkingAudio.setPlaybackRate(1.3);
+    } else if (moving) {
+        if (!walkingAudio.isPlaying) {
+            walkingAudio.play();
+        }
+        walkingAudio.setPlaybackRate(1.0);
+    } else {
+        if (walkingAudio.isPlaying) {
+            walkingAudio.stop();
+        }
+        walkingAudio.setPlaybackRate(1.0);
+    }
+    updateEntities(elapsedTime);
     updateCameraPosition();
     renderer.render(currentScene, current_camera);
 }
