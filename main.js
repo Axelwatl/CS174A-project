@@ -210,7 +210,7 @@ function makeGameScene() {
     entity1.position.set(entity1_spawn.x, 1, entity1_spawn.z);
     entity1.castShadow = true;
     entity1.receiveShadow = true;
-    gameScene.add(entity1);
+    //gameScene.add(entity1);
     const entity1_fovGeometry = new THREE.ConeGeometry(2, 8, 8, 1);   // base radius, height, radius segments, height segments
     const entity1_fovMaterial = new THREE.MeshStandardMaterial({ 
         color: 0xFFFF80, 
@@ -542,7 +542,7 @@ function isPositionValid(x, z) {
 
 let shift = false;
 window.addEventListener('keydown', function(event) {
-    console.log('Key pressed:', event.key); // For debugging
+    //console.log('Key pressed:', event.key); // For debugging
     if (event.shiftKey) shift = true;
     inputs[event.key] = true;
     switch (event.key) {

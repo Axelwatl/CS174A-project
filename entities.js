@@ -4,7 +4,7 @@ import { getTwoValidMazeSpaces, gameScene, player } from './main.js';
 
 export let entityList = [];
 
-const ENTITY_COUNT = 2;
+const ENTITY_COUNT = 1;
 const ENTITY_SPEED = 1.0;
 
 export function addEntities(){
@@ -19,6 +19,8 @@ export function addEntities(){
         const entityMaterial = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
         const entityMesh = new THREE.Mesh(entityGeometry, entityMaterial);
         entityMesh.position.set(spawnPoint.x, 1, spawnPoint.z);
+        entityMesh.castShadow = true;
+        entityMesh.receiveShadow = true;
 
         // Entity's FOV Cone
         const fovGeometry = new THREE.ConeGeometry(4, 8, 8, 1);   // base radius, height, radius segments, height segments
@@ -114,9 +116,7 @@ export function isPlayerInFov(playerPosition, entity, cone) {
     }
 
     // Raycast to check for obstructions between the entity and player
-    //const coneSlantHeight = Math.hypot(coneHeight, coneRadius)
-    //const raycaster = new THREE.Raycaster(entityPosition, directionToPlayer.normalize(), 0, coneSlantHeight); // Create ray from entity to player
-    const raycaster = new THREE.Raycaster(entityPosition, directionToPlayer.normalize(), 0, coneHeight); // Create ray from entity to player
+    const raycaster = new THREE.Raycaster(entityPosition, directionToPlayer.normalize(), 0, distanceToPlayer); // Create ray from entity to player
     const intersects = raycaster.intersectObjects(wallMeshes); // Check for intersections with walls
 
     // If the ray intersects with any wall, the line of sight is blocked
