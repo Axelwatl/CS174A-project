@@ -24,6 +24,7 @@ let staminaAmt = document.querySelector('.stamina-amt');
 
 //temp
 let orbitCamera;
+
 export let gameScene, player;
 let menuScene, gameOverScene, currentScene, hand, map;
 let entity1, entity1_fov, entity1_detected;    // todo steve: temporary until I formalize what I want to do with these
@@ -226,6 +227,7 @@ function makeGameScene() {
     entity1_fov.position.set(0, 0, 4);
     entity1.add(entity1_fov);
 
+    // Create and place entities
     addEntities();
 
     // Room
@@ -516,6 +518,7 @@ export function getTwoValidMazeSpaces() {   // Variation of setSpawn function bu
 }
 
 let bob = 0;
+
 function updateCameraPosition() {
     // Camera offset from player; can adjust if necessary
     const cameraOffset = new THREE.Vector3(0, 1.5, 0);
@@ -553,7 +556,9 @@ function isPositionValid(x, z) {
     return true;
 }
 
+
 let stamina = 100;
+
 let shift = false;
 let moving = false;
 window.addEventListener('keydown', function(event) {
@@ -866,6 +871,7 @@ function animate() {
     // Move camera to follow the player's position
     // Animate the texture for a tremor effect
     const elapsedTime = clock.getElapsedTime();
+    updateEntities(elapsedTime);
     // Animate floor/wall
 
     if (modelEntity) {
