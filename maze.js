@@ -51,10 +51,10 @@ function placeModels(validSpawnPosition, scene, path, scale, y) {
 }
 
 export function genMaze(maze, scene) {
-    texture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
-    texture.wrapT = THREE.RepeatWrapping; //Vertical
-    const wallHeight = 10;//wallHeight could be altered
-    texture.repeat.set(1, wallHeight / 2); //Repeat once horizontally; play around w/divisor
+    //texture.wrapS = THREE.RepeatWrapping; //Horizontal wrapping
+    //texture.wrapT = THREE.RepeatWrapping; //Vertical
+    const wallHeight = 7;//wallHeight could be altered
+    //texture.repeat.set(1, wallHeight / 2); //Repeat once horizontally; play around w/divisor
     maze[1][1] = 0;
     // Temporary exit
     maze[0][maze.length - 2] = 0;
@@ -64,6 +64,7 @@ export function genMaze(maze, scene) {
     losingCoordsTEMP = new THREE.Vector3((maze.length - 5) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
 
     carvePassages(1, 1, maze);
+   // addFloorTiles(maze, scene, 'assets/Floor_Tile.glb', maze.length);
     //wallBoundingBoxes => Store the coordinates of the 4 corners of every wall in the maze. Use this for collision detection
     wallBoundingBoxes = []; // Reset wall bounding boxes
     validSpawnPosition = []; // Reset valid spawn positions
@@ -71,6 +72,18 @@ export function genMaze(maze, scene) {
     //Used with wall_geometry to make defining the bounding box easier
     const wallWidth = 2;
     const wallDepth = 2;
+    let map = new THREE.TextureLoader().load('textures/black_wall.jpg');
+    let bmap = new THREE.TextureLoader().load('textures/black_wall_i.jpg');
+    let dmap = new THREE.TextureLoader().load('textures/black_wall_d.jpg');
+
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    bmap.wrapS = bmap.wrapT = THREE.RepeatWrapping;
+    dmap.wrapS = dmap.wrapT = THREE.RepeatWrapping;
+
+    map.repeat.set(1, wallHeight / wallWidth);
+    bmap.repeat.set(1, wallHeight / wallWidth);
+    dmap.repeat.set(1, wallHeight / wallWidth);
+
     //const wallHeight = 5;//wallHeight could be altered
 
     for (let row = 0; row < maze.length; ++row) {
@@ -80,10 +93,16 @@ export function genMaze(maze, scene) {
             if (maze[row][col] === 1) {
                 // Create wall
                 let wall_geometry = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
-                let wall_material = new THREE.MeshStandardMaterial({
-                    map: texture
+                let wall_material = new THREE.MeshPhongMaterial({
+                    bumpMap: bmap,
+                    bumpScale: 0.5,
+                    displacementMap: dmap,
+                    displacementScale: 0.01,
+                    map: map,
                 });
                 let wall = new THREE.Mesh(wall_geometry, wall_material);
+                wall.receiveShadow = true;
+                wall.castShadow = true;
                 wall.position.set(x, wallHeight / 2, z);
                 wall.userData = { type: 'wall' };
                 scene.add(wall);
