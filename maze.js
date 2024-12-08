@@ -7,7 +7,7 @@ export let wallMeshes = [];
 export let collisionScale = 0.95;
 export const texture = new THREE.TextureLoader().load('textures/flesh.jpg');
 
-// Recursive backtracking algorithm for maze generation
+//Recursive backtracking algorithm for maze generation
 function carvePassages(x, z, grid) {
     const N = [-1, 0];
     const S = [1, 0];
@@ -32,7 +32,6 @@ export function genMaze(maze, scene) {
     maze[1][1] = 0;
     maze[0][maze.length - 2] = 0;
 
-    // Exit coordinates
     exitCoords = new THREE.Vector3((maze.length - 2) * 2 - maze.length + 1, 0, 0 * 2 - maze.length + 1);
 
     carvePassages(1, 1, maze);
@@ -96,7 +95,7 @@ export function genMaze(maze, scene) {
                 wallBoundingBoxes.push(wallBox);
                 wallMeshes.push(wall);
             } else if (row === 0 && col === maze.length - 2) {
-                // exit
+                //exit
                 continue;
             } else {
                 validSpawnPosition.push([x, z]);

@@ -1,16 +1,16 @@
 import * as THREE from 'three';
 import { wallBoundingBoxes, wallMeshes } from './maze.js';
 import { torchOn } from './main.js'; 
+import { showGameOverMenu } from './main.js';
 import { getTwoValidMazeSpaces, gameScene, player } from './main.js';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
-// Remove skull entity entirely, only insect entity remains
 export let entityList = [];
 let insectModel = null;
 let modelsLoaded = false;
 
-const INSECT_COUNT = 2; // For example, let's have two insect entities now.
+const INSECT_COUNT = 2;
 const ENTITY_SPEED = 1.0;
 
 // Torch on/off state
@@ -26,11 +26,9 @@ function loadMtlObj(mtlPath, objPath, scale = 0.5) {
             const objLoader = new OBJLoader();
             objLoader.setMaterials(materials);
             objLoader.load(objPath, (obj) => {
-                // Center and floor the model
                 const box = new THREE.Box3().setFromObject(obj);
                 const center = box.getCenter(new THREE.Vector3());
 
-                // Re-center the model so its base sits at y=0
                 obj.position.x -= center.x;
                 obj.position.z -= center.z;
                 obj.position.y -= box.min.y;
@@ -42,7 +40,6 @@ function loadMtlObj(mtlPath, objPath, scale = 0.5) {
                     }
                 });
 
-                // Apply scale
                 obj.scale.set(scale, scale, scale);
 
                 resolve(obj);
@@ -58,11 +55,10 @@ function loadMtlObj(mtlPath, objPath, scale = 0.5) {
 }
 
 export function loadEntityModel() {
-    // Only insect model now
     const insectPromise = loadMtlObj(
         'assets/Insect/uploads_files_3941940_monster+insects.mtl',
         'assets/Insect/uploads_files_3941940_monster+insects.obj',
-        0.5 // Insect scale
+        0.5 
     );
 
     return insectPromise.then((insectObj) => {
@@ -79,11 +75,9 @@ export function addEntities() {
         return;
     }
 
-    // Clear old entities
     entityList.forEach(ent => gameScene.remove(ent.mesh));
     entityList = [];
 
-    // Create insect entities
     addSingleEntity(insectModel, INSECT_COUNT);
 }
 
@@ -95,7 +89,7 @@ function addSingleEntity(model, count) {
 
         const entityMesh = model.clone(true);
         
-        // Position entity above floor
+        //Position entity above floor
         entityMesh.position.set(spawnPoint.x, spawnPoint.y + 0.5, spawnPoint.z);
 
         const fovMesh = createFovCone();
@@ -124,7 +118,6 @@ function addSingleEntity(model, count) {
 
 function createFovCone() {
     const fovGeometry = new THREE.ConeGeometry(4, 8, 8, 1); 
-    // POV Cone now a dull grey
     const fovMaterial = new THREE.MeshStandardMaterial({ 
         color: 0x555555, 
         transparent: true, 
@@ -149,14 +142,14 @@ export function updateEntities(time) {
 
             const distanceToPlayer = entity.mesh.position.distanceTo(player.position);
 
-            // Handle player collision
+            //Handle player collision
             if (distanceToPlayer < 0.3) {
                 if (torchOn) {
-                    // Game Over if torch is ON
+                    //Game Over if torch is ON
                     console.log("The entity caught you with the torch ON! Game Over!");
                     gameEnd(); // Transition to game end screen
                 } else {
-                    // Reset the entity if the torch is OFF
+                    //Reset the entity if the torch is OFF
                     console.log("Entity reached the player but torch was OFF, entity resets.");
                     entity.mesh.position.set(entity.spawnPoint.x, entity.spawnPoint.y + 0.5, entity.spawnPoint.z);
                     entity.detected = false;
@@ -177,37 +170,14 @@ export function updateEntities(time) {
     }
 }
 
-// Function to handle game end screen
 function gameEnd() {
-    console.log("Game Over! Transitioning to end screen...");
-    
-    // Remove entities from the scene
-    entityList.forEach(entity => gameScene.remove(entity.mesh));
-    entityList = [];
+    console.log("Game Over! Transitioning to menu screen...");
 
-    // Display game over screen (this could be HTML, a canvas overlay, etc.)
-    const gameOverScreen = document.createElement('div');
-    gameOverScreen.style.position = 'fixed'; // Make it fixed to cover the whole screen
-    gameOverScreen.style.top = '0';
-    gameOverScreen.style.left = '0';
-    gameOverScreen.style.width = '100vw'; // Full viewport width
-    gameOverScreen.style.height = '100vh'; // Full viewport height
-    gameOverScreen.style.fontSize = '3em';
-    gameOverScreen.style.color = 'white';
-    gameOverScreen.style.backgroundColor = 'rgba(0, 0, 0, 0.9)'; // Slight transparency
-    gameOverScreen.style.display = 'flex';
-    gameOverScreen.style.justifyContent = 'center';
-    gameOverScreen.style.alignItems = 'center';
-    gameOverScreen.style.zIndex = '1000'; // Ensure it's on top of everything
-    gameOverScreen.innerHTML = 'Game Over!';
-    document.body.appendChild(gameOverScreen);
+    //entityList.forEach(entity => gameScene.remove(entity.mesh));
+    //entityList = [];
 
-    // Optionally restart or reload the game after some time
-    setTimeout(() => {
-        window.location.reload(); // Reload the game after 5 seconds
-    }, 5000);
+    showGameOverMenu();
 }
-
 
 
 export function isPlayerInFov(playerPosition, entity, cone) {

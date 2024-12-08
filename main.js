@@ -48,11 +48,11 @@ let moving = false;
 let isRunning = false;
 let bob = 0;
 
-let walkingAudio; // declare here, initialize later
+let walkingAudio; //declare here, initialize later
 
-// Torch state managed in main.js
+//Torch state managed in main.js
 export let torchOn = true;
-let torchLight = null; // Will store reference to the flashlight's spotlight
+let torchLight = null; //Will store reference to the flashlight's spotlight
 
 init();
 
@@ -68,7 +68,7 @@ function init() {
     const listener = new THREE.AudioListener();
     camera.add(listener);
 
-    // Initialize walkingAudio now
+    //Initialize walkingAudio now
     walkingAudio = new THREE.Audio(listener);
     const audioLoader2 = new THREE.AudioLoader();
     audioLoader2.load('/audio/concrete-footsteps.mp3', (buffer) => {
@@ -172,7 +172,7 @@ function init() {
     });
     gameScene.add(camera);
 
-    // Floor
+    //Floor
     const floorGeometry = new THREE.PlaneGeometry(map.length * 2 + 1, map.length * 2 + 1);
     const floorMaterial = new THREE.MeshStandardMaterial({map : floorTexture});
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -180,13 +180,13 @@ function init() {
     floor.rotation.x = -Math.PI / 2;
     gameScene.add(floor);
 
-    // Load entity model and then add two entities
+    //Load entity model and then add two entities
     loadEntityModel().then(() => {
         addEntities(); 
     });
 
     makeText();
-    animate(); // call animate LAST in init()
+    animate(); //call animate LAST in init()
 }
 
 function makeText() {
@@ -227,7 +227,7 @@ function createMenuText() {
     textMesh.position.set(centerOffset, 160, 0);
     textMesh.name = 'PAUSE';
 
-    textGeoC = new TextGeometry (('QUIT'), {
+    textGeoC = new TextGeometry('QUIT', {
         font: font,
         size: 20,
         depth: 30,
@@ -240,9 +240,9 @@ function createMenuText() {
     const centerOffsetC = -0.5 * (textGeoC.boundingBox.max.x - textGeoC.boundingBox.min.x);
     textMeshC = new THREE.Mesh(textGeoC, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMeshC.position.set(centerOffsetC, 20, 0);
-    textMeshC.name = 'QUIT'
+    textMeshC.name = 'QUIT';
 
-    textGeoA = new TextGeometry (('NEW MAP'), {
+    textGeoA = new TextGeometry('NEW MAP', {
         font: font,
         size: 10,
         depth: 30,
@@ -255,9 +255,9 @@ function createMenuText() {
     const centerOffsetA = -0.5 * (textGeoA.boundingBox.max.x - textGeoA.boundingBox.min.x);
     textMeshA = new THREE.Mesh(textGeoA, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMeshA.position.set(centerOffsetA, 55, 0);
-    textMeshA.name = 'NEWMAP'
+    textMeshA.name = 'NEWMAP';
 
-    textGeoB = new TextGeometry (('RESTART'), {
+    textGeoB = new TextGeometry('RESTART', {
         font: font,
         size: 10,
         depth: 30,
@@ -270,7 +270,7 @@ function createMenuText() {
     const centerOffsetB = -0.5 * (textGeoB.boundingBox.max.x - textGeoB.boundingBox.min.x);
     textMeshB = new THREE.Mesh(textGeoB, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMeshB.position.set(centerOffsetB, 85, 0);
-    textMeshB.name = 'RESTART'
+    textMeshB.name = 'RESTART';
 
     textGeo2 = new TextGeometry('YOU WIN', {
         font: font,
@@ -286,7 +286,7 @@ function createMenuText() {
     textMesh2 = new THREE.Mesh(textGeo2, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh2.position.set(centerOffset2, 400, 0);
 
-    textGeo3 = new TextGeometry (('GAME OVER'), {
+    textGeo3 = new TextGeometry('GAME OVER', {
         font: font,
         size: 30,
         depth: 30,
@@ -300,7 +300,7 @@ function createMenuText() {
     textMesh3 = new THREE.Mesh(textGeo3, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh3.position.set(centerOffset3, -40, 0);
 
-    textGeo4 = new TextGeometry (('QUIT'), {
+    textGeo4 = new TextGeometry('QUIT', {
         font: font,
         size: 10,
         depth: 30,
@@ -313,9 +313,9 @@ function createMenuText() {
     const centerOffset4 = -0.5 * (textGeo4.boundingBox.max.x - textGeo4.boundingBox.min.x);
     textMesh4 = new THREE.Mesh(textGeo4, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh4.position.set(centerOffset4, 250, 0);
-    textMesh4.name = 'QUIT'
+    textMesh4.name = 'QUIT';
 
-    textGeo5 = new TextGeometry (('NEW MAP'), {
+    textGeo5 = new TextGeometry('NEW MAP', {
         font: font,
         size: 15,
         depth: 30,
@@ -328,9 +328,9 @@ function createMenuText() {
     const centerOffset5 = -0.5 * (textGeo5.boundingBox.max.x - textGeo5.boundingBox.min.x);
     textMesh5 = new THREE.Mesh(textGeo5, new THREE.MeshPhongMaterial({ color: 0xF5F5F5, flatShading: true }));
     textMesh5.position.set(centerOffset5, 285, 0);
-    textMesh5.name = 'NEWMAP'
+    textMesh5.name = 'NEWMAP';
 
-    textGeo6 = new TextGeometry (('QUIT'), {
+    textGeo6 = new TextGeometry('QUIT', {
         font: font,
         size: 20,
         depth: 30,
@@ -343,9 +343,9 @@ function createMenuText() {
     const centerOffset6 = -0.5 * (textGeo6.boundingBox.max.x - textGeo6.boundingBox.min.x);
     textMesh6 = new THREE.Mesh(textGeo6, new THREE.MeshPhongMaterial({ color: 0xff0000, flatShading: true }));
     textMesh6.position.set(centerOffset6, -190, 0);
-    textMesh6.name = 'QUIT'
+    textMesh6.name = 'QUIT';
 
-    textGeo7 = new TextGeometry (('NEW MAP'), {
+    textGeo7 = new TextGeometry('NEW MAP', {
         font: font,
         size: 10,
         depth: 30,
@@ -360,7 +360,7 @@ function createMenuText() {
     textMesh7.position.set(centerOffset7, -155, 0);
     textMesh7.name = 'NEWMAP';
 
-    textGeo8 = new TextGeometry (('SHADOWS IN THE \n     LABYRINTH'), {
+    textGeo8 = new TextGeometry('SHADOWS IN THE \n     LABYRINTH', {
         font: font,
         size: 20,
         depth: 30,
@@ -375,7 +375,7 @@ function createMenuText() {
     textMesh8.position.set(centerOffset8, -245, 0);
     textMesh8.name = 'TITLE';
 
-    textGeo9 = new TextGeometry (('START'), {
+    textGeo9 = new TextGeometry('START', {
         font: font,
         size: 20,
         depth: 30,
@@ -390,6 +390,37 @@ function createMenuText() {
     textMesh9.position.set(centerOffset9, -410, 0);
     textMesh9.name = 'START';
 
+    const instrLeftGeo = new TextGeometry('Use WASD to move', {
+        font: font,
+        size: 10,
+        depth: 1,
+        curveSegments: 2,
+        bevelEnabled: false
+    });
+    const instrLeftMesh = new THREE.Mesh(instrLeftGeo, new THREE.MeshPhongMaterial({ color: 0x3bbef4 }));
+    instrLeftMesh.position.set(-150, -300, 0);
+    
+    const instrRightGeo = new TextGeometry('Use Shift to Run', {
+        font: font,
+        size: 10,
+        depth: 1,
+        curveSegments: 2,
+        bevelEnabled: false
+    });
+    const instrRightMesh = new THREE.Mesh(instrRightGeo, new THREE.MeshPhongMaterial({ color: 0x3bbef4 }));
+    instrRightMesh.position.set(50, -300, 0);
+    
+    const instrCenterGeo = new TextGeometry('Press Space to turn torch ON/OFF. Entities cannot kill you when your torch is off', {
+        font: font,
+        size: 5,
+        depth: 1,
+        curveSegments: 2,
+        bevelEnabled: false
+    });
+    const instrCenterMesh = new THREE.Mesh(instrCenterGeo, new THREE.MeshPhongMaterial({ color: 0x3bbef4 }));
+    instrCenterMesh.position.set(-150, -350, 0);
+    
+
     group.add(textMesh);
     group.add(textMesh2);
     group.add(textMesh3);
@@ -402,6 +433,10 @@ function createMenuText() {
     group.add(textMeshA);
     group.add(textMeshB);
     group.add(textMeshC);
+
+    group.add(instrLeftMesh);
+    group.add(instrRightMesh);
+    group.add(instrCenterMesh);
 
     textMesh.layers.set(1);
     textMesh2.layers.set(1);
@@ -416,6 +451,10 @@ function createMenuText() {
     textMeshB.layers.set(1);
     textMeshC.layers.set(1);
 
+    instrLeftMesh.layers.set(1);
+    instrRightMesh.layers.set(1);
+    instrCenterMesh.layers.set(1);
+
     menuItems.push(textMesh);
     menuItems.push(textMesh4);
     menuItems.push(textMesh5);
@@ -426,6 +465,7 @@ function createMenuText() {
     menuItems.push(textMeshB);
     menuItems.push(textMeshC);
 }
+
 
 function loadMap(max, min) {
     gameScene.children.filter(wall => wall.userData?.type === 'wall') 
@@ -488,11 +528,36 @@ function isPositionValid(x, z) {
     return true;
 }
 
+export function showGameOverMenu() {
+    currentScene = menuScene;             
+    current_camera = menuCamera;
+    menuCamera.position.set(0, -55, 400);
+    
+    player.position.set(player.position.x - 5, 0, player.position.z - 5);
+
+    inMenu = true;
+
+    staminaSection.id = '';
+    staminaText.id = '';
+    staminaContainer.id = '';
+    staminaAmt.id = '';
+
+    document.exitPointerLock();
+
+    if (walkingAudio) {
+        walkingAudio.setVolume(0);
+        if (walkingAudio.isPlaying) {
+            walkingAudio.stop();
+        }
+    }
+}
+
+
 window.addEventListener('keydown', function(event) {
     if (event.shiftKey) shift = true;
     inputs[event.key] = true;
 
-    // Toggle torch on space press
+    //Toggle torch on space press
     if (event.code === 'Space') {
         torchOn = !torchOn;
         if (torchLight) {
